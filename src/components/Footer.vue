@@ -1,5 +1,7 @@
 <template>
-  <footer class="fixed bottom-0 left-0 right-0 bg-[#181818]/95 backdrop-blur-sm border-t border-[#282828] z-50 h-24">
+  <footer
+    class="fixed bottom-0 left-0 right-0 bg-[#181818]/95 backdrop-blur-sm border-t border-[#282828] z-50 h-24"
+  >
     <div class="mx-auto px-4 py-4 h-full">
       <div class="flex items-center justify-between w-full h-full">
         <!-- Info de la canción -->
@@ -32,9 +34,20 @@
               class="mx-2 p-2 text-white/70 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="!currentTrack"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M13 2.5L13 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M2 8L10 2.5V13.5L2 8Z" fill="currentColor"/>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M13 2.5L13 13.5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+                <path d="M2 8L10 2.5V13.5L2 8Z" fill="currentColor" />
               </svg>
             </button>
             <button
@@ -42,12 +55,26 @@
               class="mx-3 p-3 bg-white rounded-full hover:scale-105 transition-transform disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
               :disabled="!currentTrack"
             >
-              <svg v-if="!isPlaying" width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 2.5L13 8L3 13.5V2.5Z" fill="black"/>
+              <svg
+                v-if="!isPlaying"
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M3 2.5L13 8L3 13.5V2.5Z" fill="black" />
               </svg>
-              <svg v-else width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 2.5H6V13.5H3V2.5Z" fill="black"/>
-                <path d="M10 2.5H13V13.5H10V2.5Z" fill="black"/>
+              <svg
+                v-else
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path d="M3 2.5H6V13.5H3V2.5Z" fill="black" />
+                <path d="M10 2.5H13V13.5H10V2.5Z" fill="black" />
               </svg>
             </button>
             <button
@@ -55,16 +82,29 @@
               class="mx-2 p-2 text-white/70 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               :disabled="!currentTrack"
             >
-              <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M3 2.5L3 13.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                <path d="M14 8L6 2.5V13.5L14 8Z" fill="currentColor"/>
+              <svg
+                width="16"
+                height="16"
+                viewBox="0 0 16 16"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M3 2.5L3 13.5"
+                  stroke="currentColor"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                />
+                <path d="M14 8L6 2.5V13.5L14 8Z" fill="currentColor" />
               </svg>
             </button>
           </div>
 
           <!-- Barra de progreso -->
           <div class="flex items-center w-full">
-            <span class="text-white/60 text-xs mr-2 w-10 text-right">{{ formatTime(currentTime) }}</span>
+            <span class="text-white/60 text-xs mr-2 w-10 text-right">{{
+              formatTime(currentTime)
+            }}</span>
             <div
               class="flex-1 relative h-3 cursor-pointer group"
               @mousedown="startProgressDrag"
@@ -72,7 +112,9 @@
               @mouseup="endProgressDrag"
               @mouseleave="endProgressDrag"
             >
-              <div class="absolute top-1/2 -translate-y-1/2 w-full h-1 bg-white/10 rounded-full"></div>
+              <div
+                class="absolute top-1/2 -translate-y-1/2 w-full h-1 bg-white/10 rounded-full"
+              ></div>
               <div
                 class="absolute top-1/2 -translate-y-1/2 h-1 bg-white group-hover:bg-green-500 rounded-full transition-colors"
                 :style="{ width: `${progressPercentage}%` }"
@@ -93,11 +135,35 @@
               @click="toggleMute"
               class="mx-2 p-2 text-white/70 hover:text-white transition-colors"
             >
-              <svg v-if="isMuted" xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+              <svg
+                v-if="isMuted"
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M17.25 9.75 19.5 12m0 0 2.25 2.25M19.5 12l2.25-2.25M19.5 12l-2.25 2.25m-10.5-6 4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"
+                />
               </svg>
-              <svg v-else xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z" />
+              <svg
+                v-else
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M19.114 5.636a9 9 0 0 1 0 12.728M16.463 8.288a5.25 5.25 0 0 1 0 7.424M6.75 8.25l4.72-4.72a.75.75 0 0 1 1.28.53v15.88a.75.75 0 0 1-1.28.53l-4.72-4.72H4.51c-.88 0-1.704-.507-1.938-1.354A9.009 9.009 0 0 1 2.25 12c0-.83.112-1.633.322-2.396C2.806 8.756 3.63 8.25 4.51 8.25H6.75Z"
+                />
               </svg>
             </button>
             <div
@@ -140,7 +206,7 @@ const isMuted = computed(() => playerStore.isMuted)
 // Nombres de artistas
 const artistNames = computed(() => {
   if (!currentTrack.value) return ''
-  return currentTrack.value.artists.map(a => a.name).join(', ')
+  return currentTrack.value.artists.map((a) => a.name).join(', ')
 })
 
 // Porcentaje de progreso
@@ -158,16 +224,17 @@ const formatTime = (ms: number) => {
 
 // Control de progreso
 let isDraggingProgress = false
-let progressDragStartX = 0
-let progressDragStartTime = 0
 
 const startProgressDrag = (e: MouseEvent) => {
   isDraggingProgress = true
-  progressDragStartX = e.clientX
-  progressDragStartTime = currentTime.value
 }
 
 const updateProgressDrag = (e: MouseEvent) => {
+  if (!isDraggingProgress) return
+  // Durante el arrastre, no actualizar el tiempo real para evitar interrupciones
+}
+
+const endProgressDrag = (e: MouseEvent) => {
   if (!isDraggingProgress) return
 
   const progressBar = e.currentTarget as HTMLElement
@@ -176,10 +243,9 @@ const updateProgressDrag = (e: MouseEvent) => {
   const percentage = Math.max(0, Math.min(1, x / rect.width))
   const newTime = percentage * duration.value
 
-  playerStore.setCurrentTime(newTime)
-}
+  // Solo al finalizar el arrastre, cambiar la posición real
+  playerStore.seekTo(newTime)
 
-const endProgressDrag = () => {
   isDraggingProgress = false
 }
 

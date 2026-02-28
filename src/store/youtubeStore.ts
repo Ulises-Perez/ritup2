@@ -19,7 +19,7 @@ interface YouTubeSearchResponse {
   timestamp: string
 }
 
-const STORAGE_KEY = 'player-state'
+const STORAGE_KEY = 'youtube-player-state'
 
 // Crear el contenedor global del iframe si no existe
 function ensureGlobalYouTubeIframe() {
@@ -74,7 +74,6 @@ export const useYouTubeStore = defineStore('youtube', () => {
         currentTime: 0,
         volume: 0.5,
         youtube_id: null,
-        api: 'youtube',
       }
   const persistedTime = ref(initialState.currentTime)
   const persistedVolume = ref(initialState.volume)
@@ -91,9 +90,6 @@ export const useYouTubeStore = defineStore('youtube', () => {
         currentTime: playerStore.currentTime,
         volume: playerStore.volume,
         youtube_id: currentYouTubeId.value,
-        api: 'youtube',
-        title: currentVideo.value?.title || null,
-        author: currentVideo.value?.author || null,
       }),
     )
   }
@@ -181,6 +177,10 @@ export const useYouTubeStore = defineStore('youtube', () => {
         stopProgressTracking()
         playerStore.pause()
         saveState()
+        // Reproducir automáticamente la siguiente canción
+        playerStore.nextTrack().catch((error) => {
+          console.error('Error al reproducir la siguiente canción:', error)
+        })
         break
       case window.YT.PlayerState.PLAYING:
         startProgressTracking()
@@ -215,7 +215,7 @@ export const useYouTubeStore = defineStore('youtube', () => {
       isLoading.value = true
       error.value = null
       const response = await fetch(
-        `${API_URL}/search?query=${encodeURIComponent(query)}&max_results=2`,
+        `${API_URL}/search?query=${encodeURIComponent(query)}&max_results=1`,
       )
       if (!response.ok) throw new Error(`Error HTTP: ${response.status}`)
       const data: YouTubeSearchResponse = await response.json()
@@ -232,37 +232,15 @@ export const useYouTubeStore = defineStore('youtube', () => {
 
   // Reproducir canción de Spotify usando YouTube
   const playSpotifyTrack = async (
-    trackInfo: { name: string; artists: Array<{ name: string }>; youtube_id?: string },
+    track: { name: string; artists: Array<{ name: string }>; youtube_id?: string },
     options?: { autoplay?: boolean; startTimeMs?: number },
-  ): Promise<boolean> => {
+  ) => {
     try {
       stopProgressTracking()
-      const autoplay = options?.autoplay !== false
-
-      // Intentar restaurar el estado si cambiamos de API
-      const savedPlayerState = localStorage.getItem('player-state')
-      if (savedPlayerState) {
-        const state = JSON.parse(savedPlayerState)
-        if (state.youtube_id && state.youtube_id === trackInfo.youtube_id) {
-          console.log('Restaurando estado de reproducción desde otra API')
-          currentYouTubeId.value = state.youtube_id
-          if (state.currentTime) {
-            persistedTime.value = state.currentTime
-          }
-          if (state.title) {
-            currentVideo.value = {
-              title: state.title,
-              author: state.author,
-              videoId: state.youtube_id,
-            } as YouTubeVideo
-          }
-        }
-      }
-
       // Si el video ya está cargado, solo hacer play/seek si es necesario
       if (
-        trackInfo.youtube_id &&
-        currentYouTubeId.value === trackInfo.youtube_id &&
+        track.youtube_id &&
+        currentYouTubeId.value === track.youtube_id &&
         player.value &&
         isReady.value
       ) {
@@ -274,12 +252,12 @@ export const useYouTubeStore = defineStore('youtube', () => {
         return true
       }
       // Buscar videos y probar el primero, si falla probar el segundo
-      const query = `${trackInfo.name} ${trackInfo.artists.map((a) => a.name).join(' ')} official audio`
+      const query = `${track.artists.map((a) => a.name).join(' ')} ${track.name} audio`
       const videos = await searchVideo(query)
       for (let i = 0; i < videos.length; i++) {
         const video = videos[i]
         if (video && player.value && isReady.value) {
-          trackInfo.youtube_id = video.id
+          track.youtube_id = video.id
           currentYouTubeId.value = video.id
           currentVideo.value = video
           let startSeconds = 0
@@ -394,17 +372,6 @@ export const useYouTubeStore = defineStore('youtube', () => {
     (newVolume) => {
       if (player.value && isReady.value) {
         player.value.setVolume(newVolume * 100)
-        saveState()
-      }
-    },
-  )
-
-  // Al final del store, justo antes del return
-  watch(
-    () => playerStore.currentTrack,
-    (newTrack) => {
-      if (newTrack && newTrack.youtube_id) {
-        currentYouTubeId.value = newTrack.youtube_id
         saveState()
       }
     },

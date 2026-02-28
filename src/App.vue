@@ -4,17 +4,12 @@ import { onMounted } from 'vue'
 import Nav from './components/Nav.vue'
 import Player from './components/Player.vue'
 import { useConfigStore } from './store/configStore'
-import { useApiStore } from './store/apiStore'
 
 const configStore = useConfigStore()
-const apiStore = useApiStore()
 
 onMounted(() => {
   // Inicializar configuraciones
   configStore.init()
-
-  // Inicializar API activa basada en configuración
-  apiStore.initActivePlayer()
 })
 </script>
 

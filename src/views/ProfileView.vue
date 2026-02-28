@@ -133,7 +133,7 @@ const apiStore = useApiStore()
 const profile = ref(null)
 const playlists = ref([])
 const followedArtists = ref([])
-const invidiousUrl = ref(localStorage.getItem('invidious-instance') || 'https://vid.puffyan.us')
+const invidiousUrl = ref(localStorage.getItem('invidious-instance') || 'https://inv.nadeko.net')
 const invidiousStatus = ref('') // puede ser 'ok', 'error', o vacío
 
 // Función para verificar el estado de la instancia de Invidious
@@ -144,25 +144,16 @@ const checkInvidiousStatus = async () => {
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), 3000)
 
-    console.log(`Verificando estado de Invidious en: ${invidiousUrl.value}/api/v1/stats`)
     const response = await fetch(`${invidiousUrl.value}/api/v1/stats`, {
       method: 'HEAD',
-      mode: 'cors',
-      cache: 'no-cache',
       signal: controller.signal,
     })
 
     clearTimeout(timeoutId)
 
-    if (response.ok) {
-      console.log('Respuesta OK de Invidious.')
-      invidiousStatus.value = 'ok'
-    } else {
-      console.warn('Respuesta no OK de Invidious:', response.status)
-      invidiousStatus.value = 'error'
-    }
+    invidiousStatus.value = response.ok ? 'ok' : 'error'
   } catch (error) {
-    console.error('Error detallado al verificar estado de Invidious:', error)
+    console.warn('Error al verificar estado de Invidious:', error)
     invidiousStatus.value = 'error'
   }
 }
@@ -174,7 +165,7 @@ const toggleAPI = async () => {
   // Después de cambiar a Invidious, verificar su estado
   if (configStore.useInvidious) {
     // Leer la instancia guardada (podría haber cambiado si usamos apiStore)
-    invidiousUrl.value = localStorage.getItem('invidious-instance') || 'https://vid.puffyan.us'
+    invidiousUrl.value = localStorage.getItem('invidious-instance') || 'https://inv.nadeko.net'
     await checkInvidiousStatus()
   }
 

@@ -50,6 +50,12 @@ interface SpotifyTokens {
   expiresAt: number | null
 }
 
+interface SpotifyAlbumSimple {
+  id: string
+  name: string
+  artists: Array<{ id: string; name: string }>
+}
+
 export const useSpotifyStore = defineStore('spotify', () => {
   const accessToken = ref('')
   const user = ref(null)
@@ -76,8 +82,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
       const response = await fetch('https://api.spotify.com/v1/me', {
         headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
+          Authorization: `Bearer ${accessToken.value}`,
+        },
       })
 
       if (!response.ok) {
@@ -112,13 +118,16 @@ export const useSpotifyStore = defineStore('spotify', () => {
       }
 
       const now = Date.now()
-      const shouldUpdate = forceUpdate || !playlists.value.length || (now - lastPlaylistsUpdate.value) > PLAYLISTS_UPDATE_INTERVAL
+      const shouldUpdate =
+        forceUpdate ||
+        !playlists.value.length ||
+        now - lastPlaylistsUpdate.value > PLAYLISTS_UPDATE_INTERVAL
 
       if (shouldUpdate) {
         const response = await fetch('https://api.spotify.com/v1/me/playlists', {
           headers: {
-            Authorization: `Bearer ${accessToken.value}`
-          }
+            Authorization: `Bearer ${accessToken.value}`,
+          },
         })
 
         if (!response.ok) {
@@ -157,8 +166,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
       const response = await fetch(`https://api.spotify.com/v1/artists/${id}`, {
         headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
+          Authorization: `Bearer ${accessToken.value}`,
+        },
       })
 
       if (!response.ok) {
@@ -190,11 +199,14 @@ export const useSpotifyStore = defineStore('spotify', () => {
         }
       }
 
-      const response = await fetch(`https://api.spotify.com/v1/artists/${id}/top-tracks?market=ES`, {
-        headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
-      })
+      const response = await fetch(
+        `https://api.spotify.com/v1/artists/${id}/top-tracks?market=ES`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+          },
+        },
+      )
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -224,11 +236,14 @@ export const useSpotifyStore = defineStore('spotify', () => {
         }
       }
 
-      const response = await fetch(`https://api.spotify.com/v1/artists/${id}/albums?market=ES&limit=50`, {
-        headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
-      })
+      const response = await fetch(
+        `https://api.spotify.com/v1/artists/${id}/albums?market=ES&limit=50`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+          },
+        },
+      )
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -257,11 +272,14 @@ export const useSpotifyStore = defineStore('spotify', () => {
         }
       }
 
-      const response = await fetch(`https://api.spotify.com/v1/artists/${artistId}/playlists?limit=10`, {
-        headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
-      })
+      const response = await fetch(
+        `https://api.spotify.com/v1/artists/${artistId}/playlists?limit=10`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+          },
+        },
+      )
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -292,8 +310,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
       const response = await fetch(`https://api.spotify.com/v1/albums/${id}?market=ES`, {
         headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
+          Authorization: `Bearer ${accessToken.value}`,
+        },
       })
 
       if (!response.ok) {
@@ -325,8 +343,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
       const response = await fetch(`https://api.spotify.com/v1/albums/${id}/tracks?market=ES`, {
         headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
+          Authorization: `Bearer ${accessToken.value}`,
+        },
       })
 
       if (!response.ok) {
@@ -349,11 +367,14 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
   const setTokens = (newAccessToken: string, refreshToken: string, expiresIn: number) => {
     accessToken.value = newAccessToken
-    localStorage.setItem('spotify_tokens', JSON.stringify({
-      accessToken: newAccessToken,
-      refreshToken,
-      expiresAt: Date.now() + (expiresIn * 1000)
-    }))
+    localStorage.setItem(
+      'spotify_tokens',
+      JSON.stringify({
+        accessToken: newAccessToken,
+        refreshToken,
+        expiresAt: Date.now() + expiresIn * 1000,
+      }),
+    )
   }
 
   const checkTokenValidity = async (): Promise<boolean> => {
@@ -365,7 +386,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
       if (!tokens.accessToken || !tokens.refreshToken || !tokens.expiresAt) return false
 
       // Si el token ha expirado o expirará en los próximos 5 minutos, renovarlo
-      if (Date.now() >= (tokens.expiresAt - 300000)) { // 5 minutos en milisegundos
+      if (Date.now() >= tokens.expiresAt - 300000) {
+        // 5 minutos en milisegundos
         const success = await refreshAccessToken(tokens.refreshToken)
         return success
       }
@@ -381,23 +403,22 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
   const refreshAccessToken = async (refreshToken: string): Promise<boolean> => {
     try {
-      const response = await axios.post('https://accounts.spotify.com/api/token',
+      const response = await axios.post(
+        'https://accounts.spotify.com/api/token',
         new URLSearchParams({
           grant_type: 'refresh_token',
           refresh_token: refreshToken,
           client_id: import.meta.env.VITE_SPOTIFY_CLIENT_ID,
-          client_secret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET
-        }), {
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded'
-        }
-      })
-
-      setTokens(
-        response.data.access_token,
-        refreshToken,
-        response.data.expires_in
+          client_secret: import.meta.env.VITE_SPOTIFY_CLIENT_SECRET,
+        }),
+        {
+          headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        },
       )
+
+      setTokens(response.data.access_token, refreshToken, response.data.expires_in)
       return true
     } catch (error) {
       console.error('Error al refrescar el token:', error)
@@ -417,8 +438,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
       const response = await fetch(`https://api.spotify.com/v1/users/${id}`, {
         headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
+          Authorization: `Bearer ${accessToken.value}`,
+        },
       })
 
       if (!response.ok) {
@@ -443,15 +464,18 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
   const getUserPlaylists = async (id: string) => {
     const response = await axios.get(`https://api.spotify.com/v1/users/${id}/playlists?limit=50`, {
-      headers: { Authorization: `Bearer ${accessToken.value}` }
+      headers: { Authorization: `Bearer ${accessToken.value}` },
     })
     return response.data.items
   }
 
   const getFollowedArtists = async () => {
-    const response = await axios.get('https://api.spotify.com/v1/me/following?type=artist&limit=50', {
-      headers: { Authorization: `Bearer ${accessToken.value}` }
-    })
+    const response = await axios.get(
+      'https://api.spotify.com/v1/me/following?type=artist&limit=50',
+      {
+        headers: { Authorization: `Bearer ${accessToken.value}` },
+      },
+    )
     return response.data.artists.items
   }
 
@@ -460,8 +484,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
       headers: { Authorization: `Bearer ${accessToken.value}` },
       params: {
         limit: 10,
-        time_range: 'short_term' // últimas 4 semanas
-      }
+        time_range: 'short_term', // últimas 4 semanas
+      },
     })
     return response.data.items
   }
@@ -470,8 +494,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
     const response = await axios.get('https://api.spotify.com/v1/me/tracks', {
       headers: { Authorization: `Bearer ${accessToken.value}` },
       params: {
-        limit: 50
-      }
+        limit: 50,
+      },
     })
     return response.data.items
   }
@@ -480,8 +504,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
     const response = await axios.get('https://api.spotify.com/v1/me/albums', {
       headers: { Authorization: `Bearer ${accessToken.value}` },
       params: {
-        limit: 50
-      }
+        limit: 50,
+      },
     })
     return response.data.items
   }
@@ -491,8 +515,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
       headers: { Authorization: `Bearer ${accessToken.value}` },
       params: {
         limit: 20,
-        country: 'ES'
-      }
+        country: 'ES',
+      },
     })
     return response.data.albums.items
   }
@@ -502,8 +526,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
       headers: { Authorization: `Bearer ${accessToken.value}` },
       params: {
         limit: 20,
-        time_range: 'short_term'
-      }
+        time_range: 'short_term',
+      },
     })
     return response.data.items
   }
@@ -519,11 +543,13 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
       const query = encodeURIComponent(`artist:${artistName}`)
       const response = await fetch(
-        `https://api.spotify.com/v1/search?q=${query}&type=playlist&limit=10&market=ES`, {
-        headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
-      })
+        `https://api.spotify.com/v1/search?q=${query}&type=playlist&limit=10&market=ES`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+          },
+        },
+      )
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -555,8 +581,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
       const response = await fetch(`https://api.spotify.com/v1/playlists/${id}`, {
         headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
+          Authorization: `Bearer ${accessToken.value}`,
+        },
       })
 
       if (!response.ok) {
@@ -588,8 +614,8 @@ export const useSpotifyStore = defineStore('spotify', () => {
 
       const response = await fetch(`https://api.spotify.com/v1/playlists/${id}/tracks?market=ES`, {
         headers: {
-          Authorization: `Bearer ${accessToken.value}`
-        }
+          Authorization: `Bearer ${accessToken.value}`,
+        },
       })
 
       if (!response.ok) {
@@ -620,29 +646,139 @@ export const useSpotifyStore = defineStore('spotify', () => {
       }
 
       const response = await fetch(
-        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track,artist,album,playlist&market=ES&limit=20`,
+        `https://api.spotify.com/v1/search?q=${encodeURIComponent(query)}&type=track,artist,album,playlist&limit=20&market=ES`,
         {
           headers: {
-            Authorization: `Bearer ${accessToken.value}`
-          }
-        }
+            Authorization: `Bearer ${accessToken.value}`,
+          },
+        },
       )
 
       if (!response.ok) {
         if (response.status === 401) {
+          // Token expirado o inválido
           const isValid = await checkTokenValidity()
           if (!isValid) {
             throw new Error('Token inválido')
           }
+          // Reintentar la llamada
           return search(query)
         }
-        throw new Error('Error al realizar la búsqueda')
+        throw new Error('Error en la búsqueda')
       }
 
       return response.json()
     } catch (error) {
       console.error('Error en search:', error)
       throw error
+    }
+  }
+
+  const getSimilarSongs = async (artistId: string) => {
+    try {
+      if (!accessToken.value) {
+        const isValid = await checkTokenValidity()
+        if (!isValid) {
+          throw new Error('No hay token de acceso válido')
+        }
+      }
+
+      if (!artistId) {
+        console.warn('No se proporcionó ID del artista')
+        return []
+      }
+
+      // 1. Obtener información del artista para sus géneros
+      const artistResponse = await fetch(`https://api.spotify.com/v1/artists/${artistId}`, {
+        headers: {
+          Authorization: `Bearer ${accessToken.value}`,
+        },
+      })
+
+      if (!artistResponse.ok) {
+        throw new Error(`Error al obtener información del artista: ${artistResponse.status}`)
+      }
+
+      const artistData = await artistResponse.json()
+      const genres = artistData.genres || []
+
+      // 2. Obtener artistas relacionados
+      const relatedArtistsResponse = await fetch(
+        `https://api.spotify.com/v1/artists/${artistId}/related-artists`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+          },
+        },
+      )
+
+      const relatedArtistsData = await relatedArtistsResponse.json()
+      const relatedArtists = relatedArtistsData.artists || []
+
+      // 3. Obtener top tracks del artista principal
+      const topTracksResponse = await fetch(
+        `https://api.spotify.com/v1/artists/${artistId}/top-tracks?market=ES`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+          },
+        },
+      )
+
+      const topTracksData = await topTracksResponse.json()
+      let allTracks = topTracksData.tracks || []
+
+      // 4. Obtener algunos tracks de artistas relacionados (máximo 3 artistas)
+      const relatedArtistPromises = relatedArtists.slice(0, 3).map((artist) =>
+        fetch(`https://api.spotify.com/v1/artists/${artist.id}/top-tracks?market=ES`, {
+          headers: {
+            Authorization: `Bearer ${accessToken.value}`,
+          },
+        }).then((res) => res.json()),
+      )
+
+      const relatedTracksResults = await Promise.all(relatedArtistPromises)
+      const relatedTracks = relatedTracksResults.flatMap((result) =>
+        (result.tracks || []).slice(0, 3),
+      )
+
+      // 5. Buscar algunas canciones por género (si hay géneros disponibles)
+      if (genres.length > 0) {
+        const randomGenre = genres[Math.floor(Math.random() * genres.length)]
+        const genreSearchResponse = await fetch(
+          `https://api.spotify.com/v1/search?q=genre:${encodeURIComponent(randomGenre)}&type=track&limit=5&market=ES`,
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken.value}`,
+            },
+          },
+        )
+
+        if (genreSearchResponse.ok) {
+          const genreData = await genreSearchResponse.json()
+          const genreTracks = genreData.tracks?.items || []
+          allTracks = [...allTracks, ...genreTracks]
+        }
+      }
+
+      // 6. Combinar todas las canciones
+      allTracks = [...allTracks, ...relatedTracks]
+
+      // 7. Eliminar duplicados y mezclar aleatoriamente
+      const uniqueTracks = allTracks.filter(
+        (track, index, self) => index === self.findIndex((t) => t.id === track.id),
+      )
+
+      // 8. Mezclar el array de forma aleatoria
+      const shuffledTracks = uniqueTracks
+        .map((value) => ({ value, sort: Math.random() }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ value }) => value)
+
+      return shuffledTracks.slice(0, 20) // Limitar a 20 canciones
+    } catch (error) {
+      console.error('Error en getSimilarSongs:', error)
+      return []
     }
   }
 
@@ -672,6 +808,7 @@ export const useSpotifyStore = defineStore('spotify', () => {
     searchArtistPlaylists,
     getPlaylist,
     getPlaylistTracks,
-    search
+    search,
+    getSimilarSongs,
   }
 })

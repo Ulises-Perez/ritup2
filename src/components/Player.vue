@@ -148,6 +148,28 @@
         <!-- Controles adicionales -->
         <div class="flex items-center justify-end w-1/4">
           <div class="flex items-center">
+            <!-- Botón de autoplay -->
+            <button
+              @click="toggleAutoplay"
+              class="mx-2 p-2 text-white/70 hover:text-white transition-colors"
+              :class="{ 'text-green-500': autoplay }"
+              title="Autoplay"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                class="h-5 w-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke-width="1.5"
+                stroke="currentColor"
+              >
+                <path
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                  d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                />
+              </svg>
+            </button>
             <button
               @click="toggleMute"
               class="mx-2 p-2 text-white/70 hover:text-white transition-colors"
@@ -226,6 +248,7 @@ const currentTime = computed(() => playerStore.currentTime)
 const duration = computed(() => playerStore.duration)
 const volume = computed(() => playerStore.volume)
 const isMuted = computed(() => playerStore.isMuted)
+const autoplay = computed(() => playerStore.autoplay)
 
 // Estado para saber si el reproductor está listo y sincronizado
 const isPlayerReadyAndSynced = ref(false)
@@ -246,6 +269,7 @@ const progressPercentage = computed(() => {
 const tempProgressPercentage = ref(0)
 const isHovering = ref(false)
 const hoverProgressPercentage = ref(0)
+const isDraggingProgress = ref(false)
 
 // Formatear tiempo
 const formatTime = (ms: number) => {
@@ -254,57 +278,48 @@ const formatTime = (ms: number) => {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
-// Control de progreso mejorado
-let isDraggingProgress = false
-let progressBarRef: HTMLElement | null = null
-
-const startProgressDrag = (e: MouseEvent) => {
-  isDraggingProgress = true
-  progressBarRef = e.currentTarget as HTMLElement
-  updateTempProgress(e)
+// Funciones para el control de la barra de progreso
+const startProgressDrag = (event: MouseEvent) => {
+  isDraggingProgress.value = true
+  updateProgressDrag(event)
 }
 
-const updateProgressDrag = (e: MouseEvent) => {
-  if (!progressBarRef) return
-  const rect = progressBarRef.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const percentage = Math.max(0, Math.min(1, x / rect.width)) * 100
-  if (isDraggingProgress) {
-    tempProgressPercentage.value = percentage
-  } else {
-    isHovering.value = true
-    hoverProgressPercentage.value = percentage
+const updateProgressDrag = (event: MouseEvent) => {
+  if (!isDraggingProgress.value) {
+    // Actualizar el hover solo si no estamos arrastrando
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+    const x = event.clientX - rect.left
+    hoverProgressPercentage.value = Math.max(0, Math.min(100, (x / rect.width) * 100))
+    return
   }
+
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const x = event.clientX - rect.left
+  tempProgressPercentage.value = Math.max(0, Math.min(100, (x / rect.width) * 100))
 }
 
-const endProgressDrag = (e: MouseEvent) => {
-  if (isDraggingProgress && progressBarRef) {
-    const rect = progressBarRef.getBoundingClientRect()
-    const x = e.clientX - rect.left
-    const percentage = Math.max(0, Math.min(1, x / rect.width))
-    const newTime = percentage * duration.value
-    if (apiStore.currentStore?.value?.isReady) {
-      apiStore.seekTo(newTime / 1000)
-    }
-    playerStore.setCurrentTime(newTime)
-  }
-  isDraggingProgress = false
-  progressBarRef = null
-  isHovering.value = false
-}
+const endProgressDrag = (event: MouseEvent) => {
+  if (!isDraggingProgress.value) return
 
-const updateTempProgress = (e: MouseEvent) => {
-  if (!progressBarRef) return
-  const rect = progressBarRef.getBoundingClientRect()
-  const x = e.clientX - rect.left
-  const percentage = Math.max(0, Math.min(1, x / rect.width)) * 100
-  tempProgressPercentage.value = percentage
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect()
+  const x = event.clientX - rect.left
+  const finalPercentage = Math.max(0, Math.min(100, (x / rect.width) * 100))
+
+  // Calcular el nuevo tiempo basado en el porcentaje
+  const newTime = (finalPercentage / 100) * duration.value
+
+  // Actualizar el tiempo en el store usando seekTo para cambiar realmente la posición
+  playerStore.seekTo(newTime)
+
+  // Resetear estados
+  isDraggingProgress.value = false
+  tempProgressPercentage.value = 0
 }
 
 const handleMouseLeave = () => {
-  if (!isDraggingProgress) {
-    isHovering.value = false
-  }
+  isDraggingProgress.value = false
+  isHovering.value = false
+  hoverProgressPercentage.value = 0
 }
 
 // Control de volumen
@@ -344,8 +359,8 @@ const togglePlay = async () => {
 
       try {
         if (
-          apiStore.currentStore?.value?.currentYouTubeId === trackYouTubeId &&
-          apiStore.currentStore?.value?.isReady
+          apiStore.currentStore.currentYouTubeId === trackYouTubeId &&
+          apiStore.currentStore.isReady
         ) {
           apiStore.play()
         } else {
@@ -366,23 +381,21 @@ const togglePlay = async () => {
 }
 
 const prevTrack = async () => {
-  playerStore.prevTrack()
-  if (currentTrack.value) {
-    await apiStore.playTrack(currentTrack.value)
-  }
+  await playerStore.prevTrack()
 }
 
 const nextTrack = async () => {
-  playerStore.nextTrack()
-  if (currentTrack.value) {
-    await apiStore.playTrack(currentTrack.value)
-  }
+  await playerStore.nextTrack()
 }
 
 const toggleMute = () => {
   const newMutedState = !isMuted.value
   playerStore.setMuted(newMutedState)
   apiStore.setVolume(newMutedState ? 0 : volume.value)
+}
+
+const toggleAutoplay = () => {
+  playerStore.setAutoplay(!autoplay.value)
 }
 
 // Inicializar YouTube al montar y restaurar estado visual
@@ -393,7 +406,7 @@ onMounted(async () => {
     let attempts = 0
     const maxAttempts = 100 // Aproximadamente 5 segundos con 50ms de intervalo
 
-    while (!apiStore.currentStore?.value?.isReady && attempts < maxAttempts) {
+    while (!apiStore.currentStore.isReady && attempts < maxAttempts) {
       await new Promise((res) => setTimeout(res, 50))
       attempts++
     }
@@ -408,14 +421,6 @@ onMounted(async () => {
       playerStore.setVolume(playerStore.volume)
     }
     isPlayerReadyAndSynced.value = true
-
-    // Si la canción estaba reproduciéndose antes de la recarga, reanudarla
-    if (currentTrack.value && isPlaying.value) {
-      await apiStore.playTrack(currentTrack.value, {
-        autoplay: true,
-        startTimeMs: playerStore.currentTime,
-      })
-    }
   }
   waitForReady()
 })
@@ -427,7 +432,7 @@ watch(
     if (newTrack && (!oldTrack || newTrack.id !== oldTrack.id)) {
       // Solo recargar si el youtube_id es diferente
       const trackYouTubeId = newTrack.youtube_id
-      const loadedYouTubeId = apiStore.currentStore?.value?.currentYouTubeId
+      const loadedYouTubeId = apiStore.currentStore.currentYouTubeId
       if (!loadedYouTubeId || trackYouTubeId !== loadedYouTubeId) {
         await apiStore.playTrack(newTrack, {
           autoplay: isPlaying.value,
@@ -440,10 +445,9 @@ watch(
 
 // Limpiar eventos al desmontar
 onUnmounted(() => {
-  isDraggingProgress = false
+  isDraggingProgress.value = false
   isDraggingVolume = false
   isHovering.value = false
-  progressBarRef = null
   apiStore.cleanup()
   window.removeEventListener('beforeunload', () => {})
 })

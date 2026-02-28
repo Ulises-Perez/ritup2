@@ -41,10 +41,11 @@ app.add_middleware(
 # Configuración de Invidious
 # Lista de instancias públicas de Invidious (puedes cambiar por tu instancia preferida)
 INVIDIOUS_INSTANCES = [
-    "https://vid.puffyan.us",
-    "https://invidious.snopyta.org",
-    "https://yt.artemislena.eu",
-    "https://invidious.namazso.eu"
+    "https://inv.nadeko.net",
+    "https://yewtu.be",
+    "https://id.420129.xyz",
+    "https://invidious.nerdvpn.de",
+    "https://invidious.f5.si"
 ]
 
 # Usamos la primera instancia por defecto, pero se puede configurar para usar otras
