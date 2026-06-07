@@ -74,8 +74,11 @@ Una aplicación de música moderna construida con Vue.js 3, TypeScript y Tailwin
 
 ```bash
 Node.js 18+
-npm o yarn
+pnpm 11+   # instálalo sin npm con: corepack enable pnpm
 ```
+
+> ⚠️ Este proyecto se gestiona **exclusivamente con pnpm**. Usar `npm` o `yarn` está
+> bloqueado por el script `preinstall` del `package.json`.
 
 ### Instalación
 
@@ -85,11 +88,11 @@ git clone [url-del-repo]
 cd ritupVuejs
 
 # Instalar dependencias del frontend
-npm install
+pnpm install
 
-# Instalar dependencias del backend (API de YouTube)
-cd src/py
-pip install -r requirements.txt
+# El backend de reproducción (Node) extrae el audio de YouTube con yt-dlp.
+# Necesita Python en el PATH y el paquete yt-dlp instalado:
+pip install -U yt-dlp
 ```
 
 ### Configuración de APIs
@@ -117,15 +120,22 @@ YOUTUBE_API_KEY=tu_api_key_aqui
 #### Frontend (Vue.js)
 
 ```bash
-npm run dev
+pnpm dev
 ```
 
-#### Backend (API de YouTube - Opcional)
+#### Backend de reproducción (Node + yt-dlp)
+
+El backend que sirve la búsqueda y **extrae el audio real** de YouTube es Node
+([src/api/youtube_search.js](src/api/youtube_search.js)). Reproducir el stream
+directo (en vez del IFrame de YouTube) permite oír música que de otro modo
+bloquea la incrustación (error 150). Arráncalo junto al frontend:
 
 ```bash
-cd src/py
-python youtube_search.py
+pnpm dev:full   # frontend (Vite) + backend (Node) en paralelo
 ```
+
+Requiere `yt-dlp` instalado y `python` en el PATH (ver Instalación). El backend
+de Python en `src/py/` quedó obsoleto.
 
 ## 📁 Estructura del Proyecto
 
@@ -185,23 +195,24 @@ src/
 ## 🔧 Scripts Disponibles
 
 ```bash
-# Desarrollo
-npm run dev
+# Desarrollo (solo frontend)
+pnpm dev
+
+# Desarrollo (frontend + API de YouTube en paralelo)
+pnpm dev:full
 
 # Construcción
-npm run build
+pnpm build
 
 # Vista previa de producción
-npm run preview
+pnpm preview
 
 # Linting
-npm run lint
+pnpm lint
 
 # Testing
-npm run test
-
-# Servidor Python (YouTube API)
-cd src/py && python youtube_search.py
+pnpm test:unit   # unitarios (Vitest)
+pnpm test:e2e    # end-to-end (Playwright)
 ```
 
 ## 📱 Responsive Design

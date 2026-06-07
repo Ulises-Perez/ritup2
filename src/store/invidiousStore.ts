@@ -226,7 +226,7 @@ export const useInvidiousStore = defineStore('invidious', () => {
   }
 
   // Manejadores de eventos como funciones independientes (no métodos)
-  function onReady(event: YouTubePlayerEvent) {
+  function onReady(event: any) {
     isReady.value = true
     if (persistedVolume.value !== undefined && event.target) {
       event.target.setVolume(persistedVolume.value * 100)
@@ -239,12 +239,12 @@ export const useInvidiousStore = defineStore('invidious', () => {
     saveState()
   }
 
-  function onError(event: YouTubePlayerEvent) {
+  function onError(event: any) {
     error.value = `Error del reproductor Invidious (YT): ${event.data}`
     stopProgressTracking()
   }
 
-  function onStateChange(event: YouTubePlayerEvent) {
+  function onStateChange(event: any) {
     if (!window.YT || !window.YT.PlayerState) return
 
     switch (event.data) {
@@ -252,8 +252,8 @@ export const useInvidiousStore = defineStore('invidious', () => {
         stopProgressTracking()
         playerStore.pause()
         saveState()
-        // Reproducir automáticamente la siguiente canción
-        playerStore.nextTrack().catch((error) => {
+        // Reproducir automáticamente la siguiente canción (auto-avance)
+        playerStore.nextTrack(true).catch((error) => {
           console.error('Error al reproducir la siguiente canción:', error)
         })
         break
@@ -308,9 +308,9 @@ export const useInvidiousStore = defineStore('invidious', () => {
               },
               events: {
                 // Pasamos funciones sin this binding para los eventos
-                onReady: onReady,
-                onStateChange: onStateChange,
-                onError: onError,
+                onReady: onReady as any,
+                onStateChange: onStateChange as any,
+                onError: onError as any,
               },
             })
 

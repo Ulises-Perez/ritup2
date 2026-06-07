@@ -21,6 +21,8 @@ interface PlaybackContext {
   tracks: Track[]
 }
 
+type RepeatMode = 'off' | 'all' | 'one'
+
 interface PlayerState {
   currentTrack: Track | null
   isPlaying: boolean
@@ -33,6 +35,8 @@ interface PlayerState {
   playbackContext: PlaybackContext | null
   similarTracks: Track[]
   autoplay: boolean
+  shuffle: boolean
+  repeat: RepeatMode
 }
 
 interface YouTubeEvent {
@@ -63,6 +67,8 @@ export const usePlayerStore = defineStore('player', () => {
         playbackContext: null,
         similarTracks: [],
         autoplay: true,
+        shuffle: false,
+        repeat: 'off',
       }
 
   // Estado
@@ -77,6 +83,8 @@ export const usePlayerStore = defineStore('player', () => {
   const playbackContext = ref<PlaybackContext | null>(initialState.playbackContext)
   const similarTracks = ref<Track[]>(initialState.similarTracks)
   const autoplay = ref(initialState.autoplay)
+  const shuffle = ref<boolean>(initialState.shuffle ?? false)
+  const repeat = ref<RepeatMode>(initialState.repeat ?? 'off')
   const audioElement = ref<HTMLAudioElement | null>(null)
   const youtubePlayer = ref<YouTubePlayer | null>(null)
 
@@ -95,7 +103,7 @@ export const usePlayerStore = defineStore('player', () => {
     // Configurar el evento de finalización para audio normal
     if (audioElement.value) {
       audioElement.value.onended = () => {
-        nextTrack()
+        nextTrack(true)
       }
     }
 
@@ -104,7 +112,7 @@ export const usePlayerStore = defineStore('player', () => {
       youtubePlayer.value.addEventListener('onStateChange', (event: YouTubeEvent) => {
         if (event.data === 0) {
           // 0 significa que el video terminó
-          nextTrack()
+          nextTrack(true)
         }
       })
     }
@@ -136,12 +144,11 @@ export const usePlayerStore = defineStore('player', () => {
 
   const seekTo = (time: number) => {
     try {
-      // Si es un video de YouTube, usar el youtubeStore
+      // Delegar en el reproductor activo (audio/Invidious) vía apiStore.
+      // Import dinámico para evitar la dependencia circular con apiStore.
       if (currentTrack.value?.youtube_id) {
-        // Importar y usar el youtubeStore dinámicamente
-        import('./youtubeStore').then(({ useYouTubeStore }) => {
-          const youtubeStore = useYouTubeStore()
-          youtubeStore.seekTo(time / 1000)
+        import('./apiStore').then(({ useApiStore }) => {
+          useApiStore().seekTo(time / 1000)
         })
         // Actualizar el tiempo inmediatamente en el store
         setCurrentTime(time)
@@ -179,10 +186,32 @@ export const usePlayerStore = defineStore('player', () => {
     saveState()
   }
 
-  const nextTrack = async () => {
+  // isAuto = la llamada viene del fin natural de la pista (no del botón "siguiente").
+  const nextTrack = async (isAuto = false) => {
+    // Repetir una: en el auto-avance, repetir la misma pista.
+    if (isAuto && repeat.value === 'one' && currentTrack.value) {
+      await playTrack(currentTrack.value)
+      return
+    }
+
+    // Aleatorio: saltar a una pista al azar de la cola (distinta de la actual).
+    if (shuffle.value && queue.value.length > 1) {
+      let nextIndex = currentIndex.value
+      while (nextIndex === currentIndex.value) {
+        nextIndex = Math.floor(Math.random() * queue.value.length)
+      }
+      currentIndex.value = nextIndex
+      await playTrack(queue.value[nextIndex])
+      return
+    }
+
     if (hasNextTrack.value) {
       currentIndex.value++
       await playTrack(queue.value[currentIndex.value])
+    } else if (repeat.value === 'all' && queue.value.length > 0) {
+      // Repetir toda la cola: volver al principio.
+      currentIndex.value = 0
+      await playTrack(queue.value[0])
     } else if (autoplay.value && similarTracks.value.length > 0) {
       // Si está activado el autoplay y hay canciones similares, reproducir una similar
       const randomSimilar =
@@ -196,11 +225,106 @@ export const usePlayerStore = defineStore('player', () => {
     }
   }
 
+  // Calcula cuál sería la siguiente pista (misma lógica que nextTrack) SIN
+  // reproducirla. Lo usa el crossfade para precargarla. index = -1 si la pista
+  // no está en la cola (caso de "similares"). Devuelve null si no hay siguiente.
+  const peekNext = (isAuto = true): { track: Track; index: number } | null => {
+    if (isAuto && repeat.value === 'one' && currentTrack.value) {
+      return { track: currentTrack.value, index: currentIndex.value }
+    }
+    if (shuffle.value && queue.value.length > 1) {
+      let nextIndex = currentIndex.value
+      while (nextIndex === currentIndex.value) {
+        nextIndex = Math.floor(Math.random() * queue.value.length)
+      }
+      return { track: queue.value[nextIndex], index: nextIndex }
+    }
+    if (hasNextTrack.value) {
+      return { track: queue.value[currentIndex.value + 1], index: currentIndex.value + 1 }
+    }
+    if (repeat.value === 'all' && queue.value.length > 0) {
+      return { track: queue.value[0], index: 0 }
+    }
+    if (autoplay.value && similarTracks.value.length > 0) {
+      const t = similarTracks.value[Math.floor(Math.random() * similarTracks.value.length)]
+      return { track: t, index: -1 }
+    }
+    return null
+  }
+
+  // Avanza el estado a una pista que YA está sonando (la cargó el crossfade en
+  // el otro elemento de audio). NO vuelve a cargar/reproducir: solo actualiza el
+  // estado para que la UI lo refleje.
+  const commitAdvance = (peek: { track: Track; index: number }) => {
+    currentTrack.value = peek.track
+    if (peek.index >= 0) currentIndex.value = peek.index
+    isPlaying.value = true
+    saveState()
+  }
+
   const prevTrack = async () => {
+    // Como Spotify: si llevamos más de 3s, el botón "anterior" reinicia la pista.
+    if (currentTime.value > 3000 && currentTrack.value) {
+      seekTo(0)
+      return
+    }
     if (hasPrevTrack.value) {
       currentIndex.value--
       await playTrack(queue.value[currentIndex.value])
+    } else if (currentTrack.value) {
+      seekTo(0)
     }
+  }
+
+  // --- Aleatorio / Repetir ---------------------------------------------------
+  const toggleShuffle = () => {
+    shuffle.value = !shuffle.value
+    saveState()
+  }
+
+  const cycleRepeat = () => {
+    repeat.value = repeat.value === 'off' ? 'all' : repeat.value === 'all' ? 'one' : 'off'
+    saveState()
+  }
+
+  // --- Gestión de la cola ----------------------------------------------------
+  const playQueueIndex = async (index: number) => {
+    if (index < 0 || index >= queue.value.length) return
+    currentIndex.value = index
+    await playTrack(queue.value[index])
+  }
+
+  const removeFromQueue = (index: number) => {
+    if (index < 0 || index >= queue.value.length) return
+    queue.value.splice(index, 1)
+    if (index < currentIndex.value) {
+      currentIndex.value--
+    } else if (index === currentIndex.value) {
+      // Se quitó la pista actual: ajustamos el índice sin forzar cambio de pista.
+      currentIndex.value = Math.min(currentIndex.value, queue.value.length - 1)
+    }
+    saveState()
+  }
+
+  const moveInQueue = (from: number, to: number) => {
+    if (
+      from < 0 ||
+      from >= queue.value.length ||
+      to < 0 ||
+      to >= queue.value.length ||
+      from === to
+    )
+      return
+    const [item] = queue.value.splice(from, 1)
+    queue.value.splice(to, 0, item)
+    // Mantener currentIndex apuntando a la pista que se está reproduciendo.
+    if (from === currentIndex.value) {
+      currentIndex.value = to
+    } else {
+      if (from < currentIndex.value) currentIndex.value--
+      if (to <= currentIndex.value) currentIndex.value++
+    }
+    saveState()
   }
 
   const setPlaybackContext = (context: PlaybackContext) => {
@@ -243,6 +367,8 @@ export const usePlayerStore = defineStore('player', () => {
       playbackContext: playbackContext.value,
       similarTracks: similarTracks.value,
       autoplay: autoplay.value,
+      shuffle: shuffle.value,
+      repeat: repeat.value,
     }
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state))
   }
@@ -265,6 +391,8 @@ export const usePlayerStore = defineStore('player', () => {
     playbackContext,
     similarTracks,
     autoplay,
+    shuffle,
+    repeat,
     audioElement,
     youtubePlayer,
 
@@ -283,10 +411,17 @@ export const usePlayerStore = defineStore('player', () => {
     addToQueue,
     clearQueue,
     nextTrack,
+    peekNext,
+    commitAdvance,
     prevTrack,
     setPlaybackContext,
     setSimilarTracks,
     setAutoplay,
     playFromContext,
+    toggleShuffle,
+    cycleRepeat,
+    playQueueIndex,
+    removeFromQueue,
+    moveInQueue,
   }
 })

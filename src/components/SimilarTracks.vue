@@ -1,133 +1,10 @@
-<template>
-  <div
-    v-if="!isLoading && tracks?.length > 0"
-    class="bg-[#282828]/50 rounded-xl p-6 backdrop-blur-sm"
-  >
-    <div class="flex items-center justify-between mb-4">
-      <h3 class="text-lg font-bold text-white flex items-center">
-        <svg class="w-5 h-5 mr-2 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-          />
-        </svg>
-        {{ title }}
-      </h3>
-      <div class="flex items-center space-x-2">
-        <button
-          @click="toggleAutoplay"
-          class="flex items-center space-x-2 px-3 py-1 rounded-full text-xs transition-all"
-          :class="
-            autoplay ? 'bg-green-500 text-white' : 'bg-[#3e3e3e] text-white/70 hover:bg-[#4a4a4a]'
-          "
-        >
-          <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-            <path d="M8 5v10l7-5-7-5z" />
-          </svg>
-          <span>Autoplay</span>
-        </button>
-      </div>
-    </div>
-
-    <div class="space-y-2">
-      <div
-        v-for="track in displayTracks"
-        :key="track.id"
-        @click="handleTrackClick(track)"
-        class="group flex items-center space-x-3 p-3 rounded-lg hover:bg-[#3e3e3e] transition-all duration-200 cursor-pointer"
-      >
-        <div class="relative">
-          <img
-            :src="track.album?.images?.[0]?.url || '/placeholder-album.jpg'"
-            :alt="track.name"
-            class="w-12 h-12 rounded-lg shadow-md"
-            loading="lazy"
-          />
-          <div
-            class="absolute inset-0 bg-black/20 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-          >
-            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-              <path d="M8 5v10l7-5-7-5z" />
-            </svg>
-          </div>
-        </div>
-
-        <div class="flex-1 min-w-0">
-          <p
-            class="text-white text-sm font-medium truncate group-hover:text-green-500 transition-colors"
-          >
-            {{ track.name }}
-          </p>
-          <p class="text-white/60 text-xs truncate">
-            {{ track.artists?.map((a) => a.name).join(', ') }}
-          </p>
-        </div>
-
-        <div class="flex items-center space-x-2">
-          <span class="text-white/40 text-xs">
-            {{ formatDuration(track.duration_ms) }}
-          </span>
-          <button
-            @click.stop="addToQueue(track)"
-            class="opacity-0 group-hover:opacity-100 p-1 rounded-full hover:bg-[#4a4a4a] transition-all"
-            title="Añadir a la cola"
-          >
-            <svg
-              class="w-4 h-4 text-white/70"
-              fill="none"
-              stroke="currentColor"
-              viewBox="0 0 24 24"
-            >
-              <path
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                stroke-width="2"
-                d="M12 6v6m0 0v6m0-6h6m-6 0H6"
-              />
-            </svg>
-          </button>
-        </div>
-      </div>
-
-      <!-- Mostrar más/menos -->
-      <div v-if="hasMoreTracks" class="pt-2">
-        <button
-          @click="showMore = !showMore"
-          class="w-full text-white/60 hover:text-white text-sm py-2 transition-colors"
-        >
-          {{ showMore ? 'Mostrar menos' : `Ver ${remainingTracksCount} más` }}
-        </button>
-      </div>
-    </div>
-  </div>
-
-  <!-- Estado de carga -->
-  <div v-else-if="isLoading" class="bg-[#282828]/50 rounded-xl p-6 backdrop-blur-sm">
-    <div class="flex items-center justify-center py-8">
-      <div class="animate-spin rounded-full h-8 w-8 border-b-2 border-green-500"></div>
-    </div>
-  </div>
-
-  <!-- Estado vacío -->
-  <div v-else class="bg-[#282828]/50 rounded-xl p-6 backdrop-blur-sm">
-    <div class="text-center py-8">
-      <div
-        class="w-12 h-12 mx-auto mb-4 bg-[#3e3e3e] rounded-full flex items-center justify-center"
-      >
-        <svg class="w-6 h-6 text-white/40" fill="currentColor" viewBox="0 0 20 20">
-          <path
-            d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z"
-          />
-        </svg>
-      </div>
-      <p class="text-white/60 text-sm">{{ loadingMessage }}</p>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { usePlayerStore } from '../store/playerStore'
-import { useSpotifyStore } from '../store/spotifyStore'
+import { Sparkles, Play, Plus } from '@lucide/vue'
+import { usePlayerStore } from '@/store/playerStore'
+import { useDeezerStore } from '@/store/deezerStore'
+import { Switch } from '@/components/ui/switch'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface Props {
   title?: string
@@ -138,15 +15,13 @@ withDefaults(defineProps<Props>(), {
 })
 
 const playerStore = usePlayerStore()
-const spotifyStore = useSpotifyStore()
+const deezerStore = useDeezerStore()
 
-// Estados locales
 const showMore = ref(false)
 const maxInitialTracks = 8
 const isLoading = ref(false)
 const loadingMessage = ref('Buscando canciones del artista...')
 
-// Datos computados
 const tracks = computed(() => playerStore.similarTracks || [])
 const autoplay = computed(() => playerStore.autoplay)
 
@@ -157,15 +32,9 @@ const displayTracks = computed(() => {
   return tracks.value
 })
 
-const hasMoreTracks = computed(() => {
-  return (tracks.value?.length || 0) > maxInitialTracks
-})
+const hasMoreTracks = computed(() => (tracks.value?.length || 0) > maxInitialTracks)
+const remainingTracksCount = computed(() => Math.max(0, (tracks.value?.length || 0) - maxInitialTracks))
 
-const remainingTracksCount = computed(() => {
-  return Math.max(0, (tracks.value?.length || 0) - maxInitialTracks)
-})
-
-// Métodos
 const formatDuration = (ms: number): string => {
   const totalSeconds = Math.floor(ms / 1000)
   const minutes = Math.floor(totalSeconds / 60)
@@ -178,33 +47,22 @@ interface Track {
   name: string
   duration_ms: number
   preview_url: string
-  album: {
-    images: Array<{ url: string }>
-    name?: string
-  }
+  album: { images: Array<{ url: string }>; name?: string }
   artists: Array<{ id?: string; name: string }>
   youtube_id?: string
 }
 
 const handleTrackClick = (track: Track) => {
-  const context = {
+  playerStore.playFromContext(track, {
     type: 'similar' as const,
     name: 'Más del artista',
     tracks: tracks.value,
-  }
-
-  playerStore.playFromContext(track, context)
+  })
 }
 
-const addToQueue = (track: Track) => {
-  playerStore.addToQueue(track)
-}
+const addToQueue = (track: Track) => playerStore.addToQueue(track)
+const setAutoplay = (val: boolean) => playerStore.setAutoplay(val)
 
-const toggleAutoplay = () => {
-  playerStore.setAutoplay(!autoplay.value)
-}
-
-// Observar cambios en la canción actual para cargar canciones similares
 watch(
   () => playerStore.currentTrack,
   async (newTrack: Track | null) => {
@@ -212,9 +70,7 @@ watch(
       try {
         isLoading.value = true
         loadingMessage.value = 'Buscando canciones del artista...'
-
-        const similarTracks = await spotifyStore.getSimilarSongs(newTrack.artists[0].id)
-
+        const similarTracks = await deezerStore.getSimilarSongs(newTrack.artists[0].id)
         if (similarTracks?.length) {
           playerStore.setSimilarTracks(similarTracks)
         } else {
@@ -236,11 +92,79 @@ watch(
 )
 </script>
 
-<style scoped>
-.line-clamp-1 {
-  overflow: hidden;
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-}
-</style>
+<template>
+  <div class="px-2">
+    <div class="mb-3 flex items-center justify-between">
+      <h3 class="flex items-center gap-2 text-sm font-semibold">
+        <Sparkles class="size-4 text-primary" />
+        {{ title }}
+      </h3>
+      <label class="flex items-center gap-2 text-xs text-muted-foreground">
+        Autoplay
+        <Switch :model-value="autoplay" @update:model-value="setAutoplay" />
+      </label>
+    </div>
+
+    <!-- Carga -->
+    <div v-if="isLoading" class="space-y-1">
+      <div v-for="i in 4" :key="i" class="flex items-center gap-3 p-2">
+        <Skeleton class="size-10 rounded-md" />
+        <div class="flex-1 space-y-1.5">
+          <Skeleton class="h-3.5 w-3/4" />
+          <Skeleton class="h-3 w-1/2" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Lista -->
+    <div v-else-if="tracks?.length" class="space-y-0.5">
+      <div
+        v-for="track in displayTracks"
+        :key="track.id"
+        class="group flex cursor-pointer items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent"
+        @click="handleTrackClick(track)"
+      >
+        <div class="relative size-10 shrink-0 overflow-hidden rounded-md">
+          <img
+            :src="track.album?.images?.[0]?.url || '/placeholder-album.jpg'"
+            :alt="track.name"
+            class="size-full object-cover"
+            loading="lazy"
+          />
+          <span
+            class="absolute inset-0 flex items-center justify-center bg-black/50 opacity-0 transition-opacity group-hover:opacity-100"
+          >
+            <Play class="size-4 translate-x-px text-white" />
+          </span>
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate text-sm font-medium group-hover:text-primary">{{ track.name }}</p>
+          <p class="truncate text-xs text-muted-foreground">
+            {{ track.artists?.map((a) => a.name).join(', ') }}
+          </p>
+        </div>
+        <span class="text-xs tabular-nums text-muted-foreground">
+          {{ formatDuration(track.duration_ms) }}
+        </span>
+        <button
+          class="text-muted-foreground opacity-0 transition-all hover:text-primary group-hover:opacity-100"
+          title="Añadir a la cola"
+          @click.stop="addToQueue(track)"
+        >
+          <Plus class="size-4" />
+        </button>
+      </div>
+
+      <button
+        v-if="hasMoreTracks"
+        class="w-full py-2 text-xs font-medium text-muted-foreground transition-colors hover:text-primary"
+        @click="showMore = !showMore"
+      >
+        {{ showMore ? 'Mostrar menos' : `Ver ${remainingTracksCount} más` }}
+      </button>
+    </div>
+
+    <!-- Vacío -->
+    <p v-else class="py-6 text-center text-xs text-muted-foreground">{{ loadingMessage }}</p>
+  </div>
+</template>

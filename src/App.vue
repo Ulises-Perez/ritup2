@@ -1,74 +1,49 @@
 <script setup lang="ts">
-import { RouterView } from 'vue-router'
 import { onMounted } from 'vue'
-import Nav from './components/Nav.vue'
-import Player from './components/Player.vue'
+import { RouterView } from 'vue-router'
+import AppSidebar from './components/layout/AppSidebar.vue'
+import TopBar from './components/layout/TopBar.vue'
+import MiniPlayer from './components/player/MiniPlayer.vue'
+import NowPlaying from './components/player/NowPlaying.vue'
+import QueueSheet from './components/player/QueueSheet.vue'
+import CommandPalette from './components/search/CommandPalette.vue'
+import CreatePlaylistDialog from './components/CreatePlaylistDialog.vue'
+import { Toaster } from './components/ui/sonner'
 import { useConfigStore } from './store/configStore'
 
 const configStore = useConfigStore()
 
 onMounted(() => {
-  // Inicializar configuraciones
   configStore.init()
+  // configStore.init() solo aplica `.dark` si hay tema guardado; con el default
+  // `isDarkMode = true` hay que aplicarlo a mano para arrancar en oscuro.
+  document.documentElement.classList.toggle('dark', configStore.isDarkMode)
 })
 </script>
 
 <template>
-  <div class="h-screen flex flex-col bg-background">
-    <!-- Filtro SVG ambilight global -->
-    <svg width="0" height="0" class="hidden">
-      <filter
-        id="ambilight"
-        width="500%"
-        height="500%"
-        x="-2"
-        y="-2"
-        color-interpolation-filters="sRGB"
-      >
-        <feOffset in="SourceGraphic" result="source-copy"></feOffset>
-        <feColorMatrix
-          in="source-copy"
-          type="saturate"
-          values="1.8"
-          result="saturated-copy"
-        ></feColorMatrix>
-        <feColorMatrix
-          in="saturated-copy"
-          type="matrix"
-          values="1 0 0 0 0
-                                  0 1 0 0 0
-                                  0 0 1 0 0
-                                  33 33 33 101 -80"
-          result="bright-colors"
-        ></feColorMatrix>
-        <feMorphology
-          in="bright-colors"
-          operator="dilate"
-          radius="12"
-          result="spread"
-        ></feMorphology>
-        <feGaussianBlur in="spread" stdDeviation="50" result="ambilight-light"></feGaussianBlur>
-        <feOffset in="SourceGraphic" result="source"></feOffset>
-        <feComposite in="source" in2="ambilight-light" operator="over"></feComposite>
-      </filter>
-    </svg>
-
-    <!-- Navegación -->
-    <Nav />
+  <div class="flex h-screen w-full overflow-hidden bg-background text-foreground">
+    <!-- Rail de navegación -->
+    <AppSidebar />
 
     <!-- Contenido principal -->
-    <div class="content-wrapper flex-1">
-      <RouterView />
-    </div>
+    <main class="flex min-w-0 flex-1 flex-col overflow-hidden">
+      <TopBar />
+      <div class="flex-1 overflow-y-auto">
+        <RouterView />
+      </div>
+    </main>
 
-    <!-- Reproductor persistente -->
-    <div id="youtube-player"></div>
-    <Player />
+    <!-- Reproductor (dock pequeño) + overlays -->
+    <MiniPlayer />
+    <NowPlaying />
+    <QueueSheet />
+    <CommandPalette />
+    <CreatePlaylistDialog />
+    <Toaster position="bottom-center" rich-colors />
+
+    <!-- Backend de reproducción: el iframe de YouTube se monta aquí por id.
+         NO debe ir dentro de un v-if ni desmontarse. -->
+    <div id="youtube-player" class="hidden"></div>
   </div>
 </template>
-
-<style scoped>
-.content-wrapper {
-  @apply flex-1;
-}
-</style>

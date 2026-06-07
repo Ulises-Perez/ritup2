@@ -1,50 +1,46 @@
 import { defineStore } from 'pinia'
 import { useConfigStore } from './configStore'
-import { useYouTubeStore } from './youtubeStore'
+import { useAudioStore } from './audioStore'
 import { useInvidiousStore } from './invidiousStore'
 import { computed } from 'vue'
 
 export const useApiStore = defineStore('api', () => {
   const configStore = useConfigStore()
-  const youtubeStore = useYouTubeStore()
+  const audioStore = useAudioStore()
   const invidiousStore = useInvidiousStore()
 
   // Método para obtener el store correcto basado en la configuración
   const currentStore = computed(() => {
-    return configStore.useInvidious ? invidiousStore : youtubeStore
+    return configStore.useInvidious ? invidiousStore : audioStore
   })
 
   // Inicializar el reproductor activo
   const initActivePlayer = () => {
     if (configStore.useInvidious) {
-      // Limpiar YouTube antes de inicializar Invidious
-      youtubeStore.cleanup()
+      // Limpiar el reproductor de audio antes de inicializar Invidious
+      audioStore.cleanup()
       invidiousStore.initPlayer()
     } else {
-      // Limpiar Invidious antes de inicializar YouTube
+      // Limpiar Invidious antes de inicializar el reproductor de audio
       invidiousStore.cleanup()
-      youtubeStore.initPlayer()
+      audioStore.initPlayer()
     }
   }
 
-  // No podemos usar directamente searchVideo porque no está expuesto en youtubeStore
   const searchVideo = async (query: string, maxResults = 2) => {
     // Para búsquedas, usamos Invidious directamente ya que expone searchVideoInvidious
     if (configStore.useInvidious) {
       return invidiousStore.searchVideoInvidious(query, maxResults)
     } else {
-      // Para YouTube, hacer la búsqueda interna a través de playSpotifyTrack
-      // Esto es un poco ineficiente pero es la forma más compatible
+      // Para el reproductor de audio, precargamos el stream sin reproducirlo.
       const dummyTrack = {
         name: query,
         artists: [{ name: '' }],
         youtube_id: undefined,
       }
-      // Inicia la carga del video pero lo pausa inmediatamente
-      const success = await youtubeStore.playSpotifyTrack(dummyTrack, { autoplay: false })
-      // Retorna un array con el video actual si se cargó correctamente
-      if (success && youtubeStore.currentVideo) {
-        return [youtubeStore.currentVideo]
+      const success = await audioStore.playSpotifyTrack(dummyTrack, { autoplay: false })
+      if (success && audioStore.currentVideo) {
+        return [audioStore.currentVideo]
       }
       return []
     }
@@ -58,7 +54,7 @@ export const useApiStore = defineStore('api', () => {
     if (configStore.useInvidious) {
       return invidiousStore.playTrackQuery(trackInfo, options)
     } else {
-      return youtubeStore.playSpotifyTrack(trackInfo, options)
+      return audioStore.playSpotifyTrack(trackInfo, options)
     }
   }
 
@@ -68,7 +64,7 @@ export const useApiStore = defineStore('api', () => {
   const seekTo = (seconds: number) => currentStore.value.seekTo(seconds)
   const setVolume = (volume: number) => currentStore.value.setVolume(volume)
   const cleanup = () => {
-    youtubeStore.cleanup()
+    audioStore.cleanup()
     invidiousStore.cleanup()
   }
 

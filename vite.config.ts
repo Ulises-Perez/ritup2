@@ -22,6 +22,15 @@ export default defineConfig({
   server: {
     host: '127.0.0.1',
     port: 8888,
-    strictPort: true
+    strictPort: true,
+    // Proxy de desarrollo para sortear el bloqueo CORS de api.deezer.com.
+    // El front llama a `/deezer/...` (mismo origen) y Vite lo reenvía a Deezer.
+    proxy: {
+      '/deezer': {
+        target: 'https://api.deezer.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/deezer/, ''),
+      },
+    },
   }
 })

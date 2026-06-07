@@ -1,0 +1,13 @@
+# Fija la raiz del workspace de pnpm en ESTE proyecto.
+# Su sola presencia evita que pnpm suba directorios y herede el
+# C:\Users\ulise\pnpm-workspace.yaml de la carpeta de usuario, que
+# convertia toda la carpeta de usuario en un unico workspace.
+packages:
+  - .
+allowBuilds:
+  esbuild: set this to true or false
+  vue-demi: set this to true or false
+# Dependencias autorizadas a ejecutar scripts de build/instalacion.
+onlyBuiltDependencies:
+  - esbuild
+  - vue-demi

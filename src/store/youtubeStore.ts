@@ -177,8 +177,8 @@ export const useYouTubeStore = defineStore('youtube', () => {
         stopProgressTracking()
         playerStore.pause()
         saveState()
-        // Reproducir automáticamente la siguiente canción
-        playerStore.nextTrack().catch((error) => {
+        // Reproducir automáticamente la siguiente canción (auto-avance)
+        playerStore.nextTrack(true).catch((error) => {
           console.error('Error al reproducir la siguiente canción:', error)
         })
         break
@@ -210,12 +210,12 @@ export const useYouTubeStore = defineStore('youtube', () => {
   }
 
   // Buscar video usando la API de FastAPI
-  const searchVideo = async (query: string) => {
+  const searchVideo = async (query: string, maxResults = 5) => {
     try {
       isLoading.value = true
       error.value = null
       const response = await fetch(
-        `${API_URL}/search?query=${encodeURIComponent(query)}&max_results=1`,
+        `${API_URL}/search?query=${encodeURIComponent(query)}&max_results=${maxResults}`,
       )
       if (!response.ok) throw new Error(`Error HTTP: ${response.status}`)
       const data: YouTubeSearchResponse = await response.json()
@@ -229,6 +229,67 @@ export const useYouTubeStore = defineStore('youtube', () => {
       isLoading.value = false
     }
   }
+
+  // Restaurar el sonido tras un autoplay iniciado en mudo (ver attemptPlayback).
+  const restoreSound = () => {
+    if (!player.value) return
+    try {
+      player.value.unMute()
+      const vol = playerStore.isMuted ? 0 : playerStore.volume
+      player.value.setVolume(vol * 100)
+    } catch {
+      /* el reproductor aún no está listo: ignorar */
+    }
+  }
+
+  // Cargar un video y resolver true solo si llega a PLAYING.
+  // Para autoplay arrancamos en MUDO: el navegador SIEMPRE permite el autoplay
+  // sin sonido, y reactivamos el audio en cuanto el video empieza a sonar. Así
+  // evitamos que la política de autoplay del navegador bloquee la reproducción.
+  // También escuchamos onError para saltar de inmediato los videos no
+  // incrustables (errores 101/150) en lugar de esperar al timeout.
+  const attemptPlayback = (videoId: string, startSeconds: number, autoplay: boolean) =>
+    new Promise<boolean>((resolve) => {
+      if (!player.value) return resolve(false)
+      let settled = false
+      const finish = (ok: boolean) => {
+        if (settled) return
+        settled = true
+        clearTimeout(timer)
+        try {
+          player.value.removeEventListener('onStateChange', onState)
+          player.value.removeEventListener('onError', onErr)
+        } catch {
+          /* ignorar */
+        }
+        resolve(ok)
+      }
+      const onState = (event: any) => {
+        if (event.data === window.YT.PlayerState.PLAYING) {
+          if (autoplay) restoreSound()
+          finish(true)
+        } else if (event.data === window.YT.PlayerState.ENDED) {
+          finish(false)
+        }
+      }
+      const onErr = () => finish(false) // 101/150 = incrustación deshabilitada, etc.
+      const timer = setTimeout(() => finish(false), 4000)
+      player.value.addEventListener('onStateChange', onState)
+      player.value.addEventListener('onError', onErr)
+
+      if (autoplay) {
+        try {
+          player.value.mute()
+        } catch {
+          /* ignorar */
+        }
+        player.value.loadVideoById({ videoId, startSeconds, suggestedQuality: 'auto' })
+      } else {
+        // Sin autoplay: solo dejamos el video preparado, sin reproducir.
+        player.value.cueVideoById({ videoId, startSeconds, suggestedQuality: 'auto' })
+        finish(true)
+      }
+    })
 
   // Reproducir canción de Spotify usando YouTube
   const playSpotifyTrack = async (
@@ -251,50 +312,27 @@ export const useYouTubeStore = defineStore('youtube', () => {
         if (options?.autoplay) player.value.playVideo()
         return true
       }
-      // Buscar videos y probar el primero, si falla probar el segundo
+      // Buscar varios videos: si uno no se puede incrustar, probamos el siguiente
+      // en lugar de fallar en seco (antes solo se pedía 1 resultado).
       const query = `${track.artists.map((a) => a.name).join(' ')} ${track.name} audio`
-      const videos = await searchVideo(query)
-      for (let i = 0; i < videos.length; i++) {
-        const video = videos[i]
-        if (video && player.value && isReady.value) {
-          track.youtube_id = video.id
-          currentYouTubeId.value = video.id
-          currentVideo.value = video
-          let startSeconds = 0
-          if (options && options.startTimeMs && options.startTimeMs > 0) {
-            startSeconds = options.startTimeMs / 1000
-          } else if (persistedTime.value > 0) {
-            startSeconds = persistedTime.value / 1000
-            persistedTime.value = 0
-          }
-          // Intentar cargar el video
-          player.value.loadVideoById({
-            videoId: video.id,
-            startSeconds,
-            suggestedQuality: 'auto',
-          })
-          // Esperar un poco y verificar si el video se reproduce
-          const playPromise = new Promise<boolean>((resolve) => {
-            const timeout = setTimeout(() => resolve(false), 2500)
-            const onStateChange = (event: any) => {
-              if (event.data === window.YT.PlayerState.PLAYING) {
-                clearTimeout(timeout)
-                player.value.removeEventListener('onStateChange', onStateChange)
-                resolve(true)
-              } else if (
-                event.data === window.YT.PlayerState.UNSTARTED ||
-                event.data === window.YT.PlayerState.ENDED
-              ) {
-                // Si no puede reproducirse
-                clearTimeout(timeout)
-                player.value.removeEventListener('onStateChange', onStateChange)
-                resolve(false)
-              }
-            }
-            player.value.addEventListener('onStateChange', onStateChange)
-          })
-          const played = await playPromise
-          if (played) return true
+      const videos = await searchVideo(query, 5)
+      const autoplay = options?.autoplay !== false
+      for (const video of videos) {
+        if (!video || !player.value || !isReady.value) continue
+        track.youtube_id = video.id
+        currentYouTubeId.value = video.id
+        currentVideo.value = video
+        let startSeconds = 0
+        if (options && options.startTimeMs && options.startTimeMs > 0) {
+          startSeconds = options.startTimeMs / 1000
+        } else if (persistedTime.value > 0) {
+          startSeconds = persistedTime.value / 1000
+          persistedTime.value = 0
+        }
+        const played = await attemptPlayback(video.id, startSeconds, autoplay)
+        if (played) {
+          error.value = null
+          return true
         }
       }
       error.value = 'No se pudo reproducir ningún video válido.'
