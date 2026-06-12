@@ -1,8 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, ref } from 'vue'
 import { Sparkles, Play, Plus } from '@lucide/vue'
 import { usePlayerStore } from '@/store/playerStore'
-import { useDeezerStore } from '@/store/deezerStore'
 import { Switch } from '@/components/ui/switch'
 import { Skeleton } from '@/components/ui/skeleton'
 
@@ -15,14 +14,17 @@ withDefaults(defineProps<Props>(), {
 })
 
 const playerStore = usePlayerStore()
-const deezerStore = useDeezerStore()
 
 const showMore = ref(false)
 const maxInitialTracks = 8
-const isLoading = ref(false)
-const loadingMessage = ref('Buscando canciones del artista...')
 
+// La carga de similares vive en el store (playerStore.loadSimilarForCurrent),
+// para que la radio anticipada funcione aunque este panel no esté montado.
 const tracks = computed(() => playerStore.similarTracks || [])
+const isLoading = computed(() => playerStore.similarLoading)
+const loadingMessage = computed(() =>
+  playerStore.currentTrack ? 'No se encontraron canciones del artista' : 'Buscando canciones...',
+)
 const autoplay = computed(() => playerStore.autoplay)
 
 const displayTracks = computed(() => {
@@ -33,7 +35,9 @@ const displayTracks = computed(() => {
 })
 
 const hasMoreTracks = computed(() => (tracks.value?.length || 0) > maxInitialTracks)
-const remainingTracksCount = computed(() => Math.max(0, (tracks.value?.length || 0) - maxInitialTracks))
+const remainingTracksCount = computed(() =>
+  Math.max(0, (tracks.value?.length || 0) - maxInitialTracks),
+)
 
 const formatDuration = (ms: number): string => {
   const totalSeconds = Math.floor(ms / 1000)
@@ -62,34 +66,6 @@ const handleTrackClick = (track: Track) => {
 
 const addToQueue = (track: Track) => playerStore.addToQueue(track)
 const setAutoplay = (val: boolean) => playerStore.setAutoplay(val)
-
-watch(
-  () => playerStore.currentTrack,
-  async (newTrack: Track | null) => {
-    if (newTrack?.artists?.[0]?.id) {
-      try {
-        isLoading.value = true
-        loadingMessage.value = 'Buscando canciones del artista...'
-        const similarTracks = await deezerStore.getSimilarSongs(newTrack.artists[0].id)
-        if (similarTracks?.length) {
-          playerStore.setSimilarTracks(similarTracks)
-        } else {
-          loadingMessage.value = 'No se encontraron canciones del artista'
-          playerStore.setSimilarTracks([])
-        }
-      } catch (error) {
-        console.error('Error al cargar canciones del artista:', error)
-        loadingMessage.value = 'No se pudieron cargar las canciones'
-        playerStore.setSimilarTracks([])
-      } finally {
-        isLoading.value = false
-      }
-    } else {
-      playerStore.setSimilarTracks([])
-    }
-  },
-  { immediate: true },
-)
 </script>
 
 <template>

@@ -7,10 +7,11 @@ interface Track {
   duration_ms: number
   preview_url: string
   album: {
+    id?: string
     images: Array<{ url: string }>
     name?: string
   }
-  artists: Array<{ name: string }>
+  artists: Array<{ id?: string; name: string }>
   youtube_id?: string
 }
 
@@ -82,6 +83,8 @@ export const usePlayerStore = defineStore('player', () => {
   const currentIndex = ref(initialState.currentIndex)
   const playbackContext = ref<PlaybackContext | null>(initialState.playbackContext)
   const similarTracks = ref<Track[]>(initialState.similarTracks)
+  // Estado de carga de las similares (no se persiste). Lo consume la UI.
+  const similarLoading = ref(false)
   const autoplay = ref(initialState.autoplay)
   const shuffle = ref<boolean>(initialState.shuffle ?? false)
   const repeat = ref<RepeatMode>(initialState.repeat ?? 'off')
@@ -99,6 +102,10 @@ export const usePlayerStore = defineStore('player', () => {
     currentTime.value = 0
     duration.value = track.duration_ms
     saveState()
+
+    // Radio anticipada: si quedan pocas pistas por delante, rellenamos la cola en
+    // segundo plano con similares (no bloquea la reproducción).
+    maybePrefetchQueue()
 
     // Configurar el evento de finalización para audio normal
     if (audioElement.value) {
@@ -186,6 +193,106 @@ export const usePlayerStore = defineStore('player', () => {
     saveState()
   }
 
+  // Continúa la cola con canciones del MISMO género cuando se agota (radio de
+  // género). Añade las pistas nuevas al final de la cola y devuelve si lo logró.
+  // Se usa sobre todo al terminar una playlist/álbum.
+  let extending = false
+  const extendQueueWithGenre = async (): Promise<boolean> => {
+    if (extending) return false
+    const seed = currentTrack.value || queue.value[queue.value.length - 1]
+    if (!seed) return false
+    extending = true
+    try {
+      const { useDeezerStore } = await import('./deezerStore')
+      const deezer = useDeezerStore()
+      const excludeIds = queue.value.map((t) => t.id)
+      const extra = await deezer.getGenreContinuation(seed, excludeIds)
+      if (!extra.length) return false
+      queue.value = [...queue.value, ...(extra as Track[])]
+      saveState()
+      return true
+    } catch (error) {
+      console.error('No se pudo extender la cola por género:', error)
+      return false
+    } finally {
+      extending = false
+    }
+  }
+
+  // Reserva: continúa con "similares por artista" cuando no hay género. También
+  // las AÑADE a la cola (no se reproducen fuera de ella) para que la cola crezca.
+  const extendQueueWithSimilar = (): boolean => {
+    if (similarTracks.value.length === 0) return false
+    const exclude = new Set(queue.value.map((t) => String(t.id)))
+    const fresh = similarTracks.value.filter((t) => t.id && !exclude.has(String(t.id)))
+    if (!fresh.length) return false
+    queue.value = [...queue.value, ...fresh]
+    saveState()
+    return true
+  }
+
+  // Extiende la cola con la mejor fuente según el contexto: en playlists/álbumes
+  // priorizamos el mismo género; en otros contextos (artista, búsqueda), las
+  // similares por artista. El que sea primario, el otro queda de reserva.
+  // Devuelve si logró añadir pistas.
+  const tryExtendQueue = async (): Promise<boolean> => {
+    const ctxType = playbackContext.value?.type
+    const preferGenre = ctxType === 'playlist' || ctxType === 'album'
+    const sources = preferGenre
+      ? [extendQueueWithGenre, extendQueueWithSimilar]
+      : [extendQueueWithSimilar, extendQueueWithGenre]
+    for (const extend of sources) {
+      if (await extend()) return true
+    }
+    return false
+  }
+
+  // Radio anticipada: cuando quedan pocas pistas por delante (típico de playlists
+  // cortas de 1-2 canciones), rellenamos la cola en segundo plano con similares
+  // para que no se repitan las mismas una y otra vez. Es fire-and-forget: no
+  // bloquea la reproducción en curso. Se omite con autoplay apagado o cuando hay
+  // repetición activa (en ese caso el bucle de la cola es intencional).
+  const PREFETCH_AHEAD = 3
+  const maybePrefetchQueue = (): void => {
+    if (!autoplay.value || repeat.value !== 'off') return
+    const tracksAhead = queue.value.length - 1 - currentIndex.value
+    if (tracksAhead > PREFETCH_AHEAD) return
+    void tryExtendQueue()
+  }
+
+  // Carga las "similares por artista" de la pista actual EN EL STORE, de forma
+  // independiente de la UI. Antes esto vivía solo en SimilarTracks.vue, así que la
+  // radio anticipada se quedaba sin datos si el panel de cola no estaba montado.
+  // Token para descartar respuestas obsoletas si la pista cambia durante la carga.
+  let similarToken = 0
+  const loadSimilarForCurrent = async (): Promise<void> => {
+    const artistId = currentTrack.value?.artists?.[0]?.id
+    if (!artistId) {
+      similarTracks.value = []
+      return
+    }
+    const token = ++similarToken
+    similarLoading.value = true
+    try {
+      const { useDeezerStore } = await import('./deezerStore')
+      const tracks = await useDeezerStore().getSimilarSongs(String(artistId))
+      if (token !== similarToken) return // llegó una carga más reciente
+      similarTracks.value = (tracks as Track[]) ?? []
+      saveState()
+      // Con similares frescas, rellena la cola si va corta.
+      maybePrefetchQueue()
+    } catch (error) {
+      console.error('No se pudieron cargar las similares:', error)
+      if (token === similarToken) similarTracks.value = []
+    } finally {
+      if (token === similarToken) similarLoading.value = false
+    }
+  }
+
+  // Recargar similares cada vez que cambia la pista (también al iniciar, para que
+  // tras recargar la página la radio anticipada tenga con qué crecer la cola).
+  watch(currentTrack, () => void loadSimilarForCurrent(), { immediate: true })
+
   // isAuto = la llamada viene del fin natural de la pista (no del botón "siguiente").
   const nextTrack = async (isAuto = false) => {
     // Repetir una: en el auto-avance, repetir la misma pista.
@@ -208,21 +315,31 @@ export const usePlayerStore = defineStore('player', () => {
     if (hasNextTrack.value) {
       currentIndex.value++
       await playTrack(queue.value[currentIndex.value])
-    } else if (repeat.value === 'all' && queue.value.length > 0) {
+      return
+    }
+
+    if (repeat.value === 'all' && queue.value.length > 0) {
       // Repetir toda la cola: volver al principio.
       currentIndex.value = 0
       await playTrack(queue.value[0])
-    } else if (autoplay.value && similarTracks.value.length > 0) {
-      // Si está activado el autoplay y hay canciones similares, reproducir una similar
-      const randomSimilar =
-        similarTracks.value[Math.floor(Math.random() * similarTracks.value.length)]
-      await playTrack(randomSimilar)
-    } else {
-      // Si no hay más canciones y no hay autoplay, detener la reproducción
-      isPlaying.value = false
-      currentTime.value = 0
-      saveState()
+      return
     }
+
+    if (autoplay.value) {
+      // Cola agotada. Continuamos AÑADIENDO canciones a la cola (para que crezca y
+      // se vea en "En cola") y reproducimos la primera nueva.
+      const added = await tryExtendQueue()
+      if (added && hasNextTrack.value) {
+        currentIndex.value++
+        await playTrack(queue.value[currentIndex.value])
+        return
+      }
+    }
+
+    // Sin más canciones (y sin autoplay o sin continuación posible): detener.
+    isPlaying.value = false
+    currentTime.value = 0
+    saveState()
   }
 
   // Calcula cuál sería la siguiente pista (misma lógica que nextTrack) SIN
@@ -245,10 +362,9 @@ export const usePlayerStore = defineStore('player', () => {
     if (repeat.value === 'all' && queue.value.length > 0) {
       return { track: queue.value[0], index: 0 }
     }
-    if (autoplay.value && similarTracks.value.length > 0) {
-      const t = similarTracks.value[Math.floor(Math.random() * similarTracks.value.length)]
-      return { track: t, index: -1 }
-    }
+    // Cola agotada: la continuación (género o similares) se resuelve de forma
+    // asíncrona en nextTrack() AÑADIENDO a la cola, así que aquí no hay nada que
+    // precargar para el crossfade. (El relevo ocurre al terminar la pista.)
     return null
   }
 
@@ -260,6 +376,7 @@ export const usePlayerStore = defineStore('player', () => {
     if (peek.index >= 0) currentIndex.value = peek.index
     isPlaying.value = true
     saveState()
+    maybePrefetchQueue()
   }
 
   const prevTrack = async () => {
@@ -307,13 +424,7 @@ export const usePlayerStore = defineStore('player', () => {
   }
 
   const moveInQueue = (from: number, to: number) => {
-    if (
-      from < 0 ||
-      from >= queue.value.length ||
-      to < 0 ||
-      to >= queue.value.length ||
-      from === to
-    )
+    if (from < 0 || from >= queue.value.length || to < 0 || to >= queue.value.length || from === to)
       return
     const [item] = queue.value.splice(from, 1)
     queue.value.splice(to, 0, item)
@@ -390,6 +501,7 @@ export const usePlayerStore = defineStore('player', () => {
     currentIndex,
     playbackContext,
     similarTracks,
+    similarLoading,
     autoplay,
     shuffle,
     repeat,
@@ -416,6 +528,7 @@ export const usePlayerStore = defineStore('player', () => {
     prevTrack,
     setPlaybackContext,
     setSimilarTracks,
+    loadSimilarForCurrent,
     setAutoplay,
     playFromContext,
     toggleShuffle,

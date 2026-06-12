@@ -5,7 +5,18 @@ import { ref, watch, onMounted, onUnmounted, nextTick } from 'vue'
 import { useRouter, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import debounce from 'lodash/debounce'
-import { Search, Music2, Disc3, ListMusic, Mic2, Home, Library, User, CornerDownLeft, Loader2 } from '@lucide/vue'
+import {
+  Search,
+  Music2,
+  Disc3,
+  ListMusic,
+  Mic2,
+  Home,
+  Library,
+  User,
+  CornerDownLeft,
+  Loader2,
+} from '@lucide/vue'
 import { useDeezerStore } from '@/store/deezerStore'
 import { usePlayerStore } from '@/store/playerStore'
 import { useLibraryStore } from '@/store/libraryStore'
@@ -109,7 +120,9 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
       :show-close-button="false"
     >
       <DialogTitle class="sr-only">Buscar</DialogTitle>
-      <DialogDescription class="sr-only">Busca artistas, canciones, álbumes y navega por la app</DialogDescription>
+      <DialogDescription class="sr-only"
+        >Busca artistas, canciones, álbumes y navega por la app</DialogDescription
+      >
 
       <!-- Input -->
       <div class="flex items-center gap-3 border-b px-4">
@@ -148,7 +161,10 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
               class="flex w-full items-center gap-3 rounded-md px-2 py-2 text-sm hover:bg-accent"
               @click="goTo(`/library/${pl.id}`)"
             >
-              <img :src="pl.images[0]?.url || '/placeholder-playlist.jpg'" class="size-8 rounded object-cover" />
+              <img
+                :src="pl.images[0]?.url || '/placeholder-playlist.jpg'"
+                class="size-8 rounded object-cover"
+              />
               <span class="truncate">{{ pl.name }}</span>
             </button>
           </template>
@@ -157,7 +173,13 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
         <!-- Resultados de búsqueda -->
         <template v-else>
           <div
-            v-if="!loading && !tracks.length && !artists.length && !albums.length && !resultPlaylists.length"
+            v-if="
+              !loading &&
+              !tracks.length &&
+              !artists.length &&
+              !albums.length &&
+              !resultPlaylists.length
+            "
             class="px-2 py-8 text-center text-sm text-muted-foreground"
           >
             Sin resultados para «{{ query }}»
@@ -171,7 +193,10 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
               class="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
               @click="playTrack(t)"
             >
-              <img :src="t.album?.images?.[0]?.url || '/placeholder-album.jpg'" class="size-9 rounded object-cover" />
+              <img
+                :src="t.album?.images?.[0]?.url || '/placeholder-album.jpg'"
+                class="size-9 rounded object-cover"
+              />
               <span class="min-w-0 flex-1">
                 <span class="block truncate font-medium">{{ t.name }}</span>
                 <span class="block truncate text-xs text-muted-foreground">{{ artistsOf(t) }}</span>
@@ -188,7 +213,10 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
               class="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
               @click="goTo(`/artist/${a.id}`)"
             >
-              <img :src="a.images?.[0]?.url || '/placeholder-artist.jpg'" class="size-9 rounded-full object-cover" />
+              <img
+                :src="a.images?.[0]?.url || '/placeholder-artist.jpg'"
+                class="size-9 rounded-full object-cover"
+              />
               <span class="min-w-0 flex-1 truncate font-medium">{{ a.name }}</span>
               <Mic2 class="size-4 shrink-0 text-muted-foreground" />
             </button>
@@ -202,10 +230,15 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
               class="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
               @click="goTo(`/album/${al.id}`)"
             >
-              <img :src="al.images?.[0]?.url || '/placeholder-album.jpg'" class="size-9 rounded object-cover" />
+              <img
+                :src="al.images?.[0]?.url || '/placeholder-album.jpg'"
+                class="size-9 rounded object-cover"
+              />
               <span class="min-w-0 flex-1">
                 <span class="block truncate font-medium">{{ al.name }}</span>
-                <span class="block truncate text-xs text-muted-foreground">{{ artistsOf(al) }}</span>
+                <span class="block truncate text-xs text-muted-foreground">{{
+                  artistsOf(al)
+                }}</span>
               </span>
               <Disc3 class="size-4 shrink-0 text-muted-foreground" />
             </button>
@@ -219,7 +252,10 @@ onUnmounted(() => window.removeEventListener('keydown', onGlobalKey))
               class="flex w-full items-center gap-3 rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
               @click="goTo(`/playlist/${pl.id}`)"
             >
-              <img :src="pl.images?.[0]?.url || '/placeholder-playlist.jpg'" class="size-9 rounded object-cover" />
+              <img
+                :src="pl.images?.[0]?.url || '/placeholder-playlist.jpg'"
+                class="size-9 rounded object-cover"
+              />
               <span class="min-w-0 flex-1 truncate font-medium">{{ pl.name }}</span>
               <ListMusic class="size-4 shrink-0 text-muted-foreground" />
             </button>

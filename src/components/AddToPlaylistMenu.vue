@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { Check, Plus } from '@lucide/vue'
 import { toast } from 'vue-sonner'
@@ -22,6 +23,9 @@ const props = defineProps<{
 const libraryStore = useLibraryStore()
 const { playlists } = storeToRefs(libraryStore)
 const { openCreatePlaylist } = useShell()
+
+// "Me gusta" se gestiona con el corazón de cada canción, no desde este menú.
+const targets = computed(() => playlists.value.filter((p) => p.kind !== 'liked'))
 
 const hasTrack = (playlistId: string) =>
   props.track ? libraryStore.hasTrack(playlistId, props.track.id) : false
@@ -50,14 +54,9 @@ const addToNew = () => {
         <Plus class="size-4 text-primary" />
         Nueva playlist
       </DropdownMenuItem>
-      <DropdownMenuSeparator v-if="playlists.length" />
+      <DropdownMenuSeparator v-if="targets.length" />
       <div class="max-h-56 overflow-y-auto">
-        <DropdownMenuItem
-          v-for="pl in playlists"
-          :key="pl.id"
-          class="gap-2"
-          @click="add(pl.id)"
-        >
+        <DropdownMenuItem v-for="pl in targets" :key="pl.id" class="gap-2" @click="add(pl.id)">
           <span class="truncate">{{ pl.name }}</span>
           <Check v-if="hasTrack(pl.id)" class="ml-auto size-4 text-primary" />
         </DropdownMenuItem>

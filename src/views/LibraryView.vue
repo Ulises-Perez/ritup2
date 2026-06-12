@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { storeToRefs } from 'pinia'
 import { RouterLink } from 'vue-router'
-import { Plus, ListMusic, Music2 } from '@lucide/vue'
+import { Plus, ListMusic, Music2, Heart } from '@lucide/vue'
 import { useLibraryStore } from '@/store/libraryStore'
 import { useShell } from '@/composables/useShell'
 import { Button } from '@/components/ui/button'
@@ -56,8 +56,14 @@ const createPlaylist = () => openCreatePlaylist()
         class="group rounded-xl border bg-card p-3 transition-all hover:bg-accent hover:shadow-lg hover:shadow-black/30"
       >
         <div class="relative mb-3 aspect-square overflow-hidden rounded-lg bg-muted">
+          <span
+            v-if="pl.kind === 'liked'"
+            class="flex size-full items-center justify-center bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white"
+          >
+            <Heart class="size-12 fill-current" />
+          </span>
           <img
-            v-if="pl.images[0]?.url"
+            v-else-if="pl.images[0]?.url"
             :src="pl.images[0].url"
             :alt="pl.name"
             class="size-full object-cover transition-transform duration-300 group-hover:scale-105"

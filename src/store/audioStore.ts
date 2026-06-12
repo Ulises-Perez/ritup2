@@ -135,20 +135,37 @@ export const useAudioStore = defineStore('audio', () => {
     crossfadeTimer = window.setInterval(() => {
       i++
       const p = Math.min(1, i / steps)
-      try { from.volume = clamp01(userVol * (1 - p)) } catch { /* ignorar */ }
-      try { to.volume = clamp01(userVol * p) } catch { /* ignorar */ }
+      try {
+        from.volume = clamp01(userVol * (1 - p))
+      } catch {
+        /* ignorar */
+      }
+      try {
+        to.volume = clamp01(userVol * p)
+      } catch {
+        /* ignorar */
+      }
       if (p >= 1) finalizeCrossfade()
     }, stepMs)
   }
 
   const finalizeCrossfade = () => {
     if (!crossfading) return
-    if (crossfadeTimer) { clearInterval(crossfadeTimer); crossfadeTimer = null }
+    if (crossfadeTimer) {
+      clearInterval(crossfadeTimer)
+      crossfadeTimer = null
+    }
     const peek = pendingPeek
     const from = active()
     const to = idle()
     // Detener y limpiar el elemento saliente para reutilizarlo luego.
-    try { from.pause(); from.removeAttribute('src'); from.load() } catch { /* ignorar */ }
+    try {
+      from.pause()
+      from.removeAttribute('src')
+      from.load()
+    } catch {
+      /* ignorar */
+    }
     from.volume = effectiveVolume()
     // Intercambiar el elemento activo.
     activeIdx = 1 - activeIdx
@@ -187,15 +204,29 @@ export const useAudioStore = defineStore('audio', () => {
       console.error('Crossfade falló, se hará avance normal:', e)
       crossfading = false
       pendingPeek = null
-      try { to.removeAttribute('src'); to.load() } catch { /* ignorar */ }
+      try {
+        to.removeAttribute('src')
+        to.load()
+      } catch {
+        /* ignorar */
+      }
     }
   }
 
   const cancelCrossfade = () => {
     if (!crossfading) return
-    if (crossfadeTimer) { clearInterval(crossfadeTimer); crossfadeTimer = null }
+    if (crossfadeTimer) {
+      clearInterval(crossfadeTimer)
+      crossfadeTimer = null
+    }
     const other = idle()
-    try { other.pause(); other.removeAttribute('src'); other.load() } catch { /* ignorar */ }
+    try {
+      other.pause()
+      other.removeAttribute('src')
+      other.load()
+    } catch {
+      /* ignorar */
+    }
     other.volume = effectiveVolume()
     crossfading = false
     pendingPeek = null
@@ -218,9 +249,17 @@ export const useAudioStore = defineStore('audio', () => {
       currentVideo.value = { id: info.id, url: info.url }
       el.src = info.url
       el.load()
-      el.addEventListener('loadedmetadata', () => {
-        try { el.currentTime = at } catch { /* ignorar */ }
-      }, { once: true })
+      el.addEventListener(
+        'loadedmetadata',
+        () => {
+          try {
+            el.currentTime = at
+          } catch {
+            /* ignorar */
+          }
+        },
+        { once: true },
+      )
       if (wasPlaying) el.play().catch(() => {})
     } catch (e) {
       console.error('Re-extracción de audio falló:', e)
@@ -251,7 +290,10 @@ export const useAudioStore = defineStore('audio', () => {
     })
     el.addEventListener('ended', () => {
       if (el !== active()) return
-      if (crossfading) { finalizeCrossfade(); return }
+      if (crossfading) {
+        finalizeCrossfade()
+        return
+      }
       playerStore.pause()
       saveState()
       playerStore.nextTrack(true).catch((e) => console.error('Auto-avance falló:', e))
@@ -317,7 +359,11 @@ export const useAudioStore = defineStore('audio', () => {
       el.volume = effectiveVolume()
       const applyStart = () => {
         if (startSeconds > 0) {
-          try { el.currentTime = startSeconds } catch { /* ignorar */ }
+          try {
+            el.currentTime = startSeconds
+          } catch {
+            /* ignorar */
+          }
         }
       }
       if (el.readyState >= 1) applyStart()
@@ -339,14 +385,21 @@ export const useAudioStore = defineStore('audio', () => {
     }
   }
 
-  const playSpotifyTrack = async (track: PlayableTrack, options?: PlayOptions): Promise<boolean> => {
+  const playSpotifyTrack = async (
+    track: PlayableTrack,
+    options?: PlayOptions,
+  ): Promise<boolean> => {
     // Cualquier reproducción explícita cancela un crossfade en curso.
     cancelCrossfade()
     const el = active()
     // Si esta pista ya está cargada en el elemento activo, solo seek/play.
     if (track.youtube_id && currentYouTubeId.value === track.youtube_id && el && el.src) {
       if (options?.startTimeMs && options.startTimeMs > 0) {
-        try { el.currentTime = options.startTimeMs / 1000 } catch { /* ignorar */ }
+        try {
+          el.currentTime = options.startTimeMs / 1000
+        } catch {
+          /* ignorar */
+        }
         playerStore.setCurrentTime(options.startTimeMs)
       }
       el.volume = effectiveVolume()
@@ -373,7 +426,9 @@ export const useAudioStore = defineStore('audio', () => {
   }
 
   const play = () => {
-    active()?.play()?.catch((e) => console.error('play() rechazado:', e))
+    active()
+      ?.play()
+      ?.catch((e) => console.error('play() rechazado:', e))
   }
 
   const pause = () => {
@@ -386,14 +441,22 @@ export const useAudioStore = defineStore('audio', () => {
     const el = active()
     if (el) {
       el.pause()
-      try { el.currentTime = 0 } catch { /* ignorar */ }
+      try {
+        el.currentTime = 0
+      } catch {
+        /* ignorar */
+      }
     }
   }
 
   const seekTo = (seconds: number) => {
     const el = active()
     if (!el) return
-    try { el.currentTime = seconds } catch { /* ignorar */ }
+    try {
+      el.currentTime = seconds
+    } catch {
+      /* ignorar */
+    }
     playerStore.setCurrentTime(seconds * 1000)
     saveState()
   }

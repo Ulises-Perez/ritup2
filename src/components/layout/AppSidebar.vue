@@ -4,7 +4,16 @@ defineOptions({ name: 'AppSidebar' })
 import { computed } from 'vue'
 import { useRoute, RouterLink } from 'vue-router'
 import { storeToRefs } from 'pinia'
-import { Music2, Home, Library, Plus, Trash2, PanelLeftOpen, PanelLeftClose } from '@lucide/vue'
+import {
+  Music2,
+  Home,
+  Library,
+  Plus,
+  Trash2,
+  Heart,
+  PanelLeftOpen,
+  PanelLeftClose,
+} from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { useLibraryStore } from '@/store/libraryStore'
 import { useShell } from '@/composables/useShell'
@@ -21,8 +30,7 @@ const navItems = [
   { label: 'Biblioteca', icon: Library, to: '/library' },
 ]
 
-const isActive = (to: string) =>
-  to === '/' ? route.path === '/' : route.path.startsWith(to)
+const isActive = (to: string) => (to === '/' ? route.path === '/' : route.path.startsWith(to))
 
 const expanded = computed(() => sidebarExpanded.value)
 
@@ -37,13 +45,16 @@ const removePlaylist = (id: string, name: string) => {
 </script>
 
 <template>
-  <TooltipProvider :delay-duration="200">
+  <TooltipProvider :delay-duration="200" :disable-hoverable-content="true">
     <aside
       class="flex h-full shrink-0 flex-col border-r bg-sidebar transition-[width] duration-300 ease-in-out"
       :class="expanded ? 'w-64' : 'w-[4.5rem]'"
     >
       <!-- Logo + toggle -->
-      <div class="flex h-16 items-center gap-2 px-3" :class="expanded ? 'justify-between' : 'justify-center'">
+      <div
+        class="flex h-16 items-center gap-2 px-3"
+        :class="expanded ? 'justify-between' : 'justify-center'"
+      >
         <RouterLink to="/" class="flex items-center gap-2.5 overflow-hidden">
           <span
             class="flex size-9 shrink-0 items-center justify-center rounded-xl bg-primary text-primary-foreground shadow-lg shadow-primary/30"
@@ -99,8 +110,14 @@ const removePlaylist = (id: string, name: string) => {
 
       <!-- Biblioteca / playlists -->
       <div class="mt-4 flex min-h-0 flex-1 flex-col px-3">
-        <div class="flex items-center justify-between px-3 pb-2" :class="expanded ? '' : 'justify-center'">
-          <span v-if="expanded" class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+        <div
+          class="flex items-center justify-between px-3 pb-2"
+          :class="expanded ? '' : 'justify-center'"
+        >
+          <span
+            v-if="expanded"
+            class="text-xs font-semibold uppercase tracking-wider text-muted-foreground"
+          >
             Tus playlists
           </span>
           <Tooltip>
@@ -114,10 +131,7 @@ const removePlaylist = (id: string, name: string) => {
         </div>
 
         <div class="-mr-1 flex-1 space-y-0.5 overflow-y-auto pr-1">
-          <p
-            v-if="expanded && !playlists.length"
-            class="px-3 py-2 text-xs text-muted-foreground"
-          >
+          <p v-if="expanded && !playlists.length" class="px-3 py-2 text-xs text-muted-foreground">
             Aún no tienes playlists.
           </p>
 
@@ -128,7 +142,14 @@ const removePlaylist = (id: string, name: string) => {
                 class="group flex items-center gap-3 rounded-lg p-2 transition-colors hover:bg-accent"
                 :class="expanded ? '' : 'justify-center'"
               >
+                <span
+                  v-if="pl.kind === 'liked'"
+                  class="flex size-10 shrink-0 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm"
+                >
+                  <Heart class="size-5 fill-current" />
+                </span>
                 <img
+                  v-else
                   :src="pl.images[0]?.url || '/placeholder-playlist.jpg'"
                   :alt="pl.name"
                   class="size-10 shrink-0 rounded-md object-cover"
@@ -142,6 +163,7 @@ const removePlaylist = (id: string, name: string) => {
                     </p>
                   </div>
                   <Button
+                    v-if="pl.kind !== 'liked'"
                     variant="ghost"
                     size="icon-sm"
                     class="opacity-0 transition-opacity hover:text-destructive group-hover:opacity-100"

@@ -153,7 +153,13 @@ const openQueueFromHere = () => {
           >
             <Shuffle class="size-5" />
           </Button>
-          <Button variant="ghost" size="icon-lg" title="Anterior" aria-label="Anterior" @click="prevTrack">
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            title="Anterior"
+            aria-label="Anterior"
+            @click="prevTrack"
+          >
             <SkipBack class="size-6" />
           </Button>
           <Button
@@ -166,7 +172,13 @@ const openQueueFromHere = () => {
             <Pause v-if="isPlaying" class="size-6" />
             <Play v-else class="size-6 translate-x-px" />
           </Button>
-          <Button variant="ghost" size="icon-lg" title="Siguiente" aria-label="Siguiente" @click="nextTrack">
+          <Button
+            variant="ghost"
+            size="icon-lg"
+            title="Siguiente"
+            aria-label="Siguiente"
+            @click="nextTrack"
+          >
             <SkipForward class="size-6" />
           </Button>
           <Button
@@ -235,7 +247,12 @@ const openQueueFromHere = () => {
             </Button>
           </div>
 
-          <Button variant="ghost" size="sm" class="text-muted-foreground" @click="openQueueFromHere">
+          <Button
+            variant="ghost"
+            size="sm"
+            class="text-muted-foreground"
+            @click="openQueueFromHere"
+          >
             <ListMusic class="size-4" />
             Cola
           </Button>

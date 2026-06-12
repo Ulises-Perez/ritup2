@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { Play, ListMusic, Plus, Check } from '@lucide/vue'
+import { Play, ListMusic, Plus, Check, Heart } from '@lucide/vue'
 import { toast } from 'vue-sonner'
 import { useDeezerStore } from '@/store/deezerStore'
 import { useLibraryStore } from '@/store/libraryStore'
@@ -112,9 +112,13 @@ onMounted(loadPlaylistData)
       <header class="flex flex-col items-center gap-6 sm:flex-row sm:items-end">
         <div
           class="flex size-48 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-muted shadow-2xl shadow-black/50"
+          :class="
+            playlist.kind === 'liked' ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : ''
+          "
         >
+          <Heart v-if="playlist.kind === 'liked'" class="size-20 fill-current text-white" />
           <img
-            v-if="playlist.images[0]?.url"
+            v-else-if="playlist.images[0]?.url"
             :src="playlist.images[0].url"
             :alt="playlist.name"
             class="size-full object-cover"
@@ -154,7 +158,11 @@ onMounted(loadPlaylistData)
 
       <!-- Canciones -->
       <section v-if="flatTracks.length" class="rounded-xl border bg-card/40 p-2 sm:p-3">
-        <TrackList :tracks="flatTracks" :start-index="0" />
+        <TrackList
+          :tracks="flatTracks"
+          :start-index="0"
+          :context="{ type: 'playlist', name: playlist.name, id: String(route.params.id) }"
+        />
       </section>
       <div
         v-else

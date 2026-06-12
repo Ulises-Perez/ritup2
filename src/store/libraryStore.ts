@@ -21,6 +21,8 @@ interface LocalPlaylist {
 }
 
 const STORAGE_KEY = 'ritup-library'
+const LIKED_KEY = 'ritup-liked'
+const LIKED_ID = 'liked'
 const PLACEHOLDER_COVER = '/placeholder-playlist.jpg'
 
 function loadInitial(): LocalPlaylist[] {
@@ -35,6 +37,18 @@ function loadInitial(): LocalPlaylist[] {
   }
 }
 
+function loadLiked(): Track[] {
+  try {
+    const saved = localStorage.getItem(LIKED_KEY)
+    if (!saved) return []
+    const parsed = JSON.parse(saved)
+    return Array.isArray(parsed) ? parsed : []
+  } catch (error) {
+    console.error('Error al cargar canciones que te gustan:', error)
+    return []
+  }
+}
+
 // Carátula de una playlist: la del primer track que tenga imagen, o un placeholder.
 function coverImages(playlist: LocalPlaylist) {
   const url =
@@ -44,6 +58,8 @@ function coverImages(playlist: LocalPlaylist) {
 }
 
 // Forma "tipo Spotify" de una playlist local, lista para las vistas.
+// `kind` distingue la playlist especial "Me gusta" (corazón) de las normales,
+// para que las vistas le den un tratamiento visual propio (degradado + corazón).
 function toViewPlaylist(playlist: LocalPlaylist) {
   return {
     id: playlist.id,
@@ -51,18 +67,50 @@ function toViewPlaylist(playlist: LocalPlaylist) {
     images: coverImages(playlist),
     owner: { id: 'local', display_name: 'Tú' },
     tracks: { total: playlist.tracks.length },
+    kind: 'local' as const,
   }
 }
 
 export const useLibraryStore = defineStore('library', () => {
   const playlistsRaw = ref<LocalPlaylist[]>(loadInitial())
+  // "Me gusta": lista de canciones marcadas con el corazón. Siempre existe.
+  const likedRaw = ref<Track[]>(loadLiked())
 
   const save = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(playlistsRaw.value))
   }
 
-  // Lista para la barra lateral / vistas (forma normalizada).
-  const playlists = computed(() => playlistsRaw.value.map(toViewPlaylist))
+  const saveLiked = () => {
+    localStorage.setItem(LIKED_KEY, JSON.stringify(likedRaw.value))
+  }
+
+  // Vista "tipo Spotify" de la playlist especial "Me gusta".
+  const likedView = computed(() => ({
+    id: LIKED_ID,
+    name: 'Me gusta',
+    images: [] as Array<{ url: string }>,
+    owner: { id: 'local', display_name: 'Tú' },
+    tracks: { total: likedRaw.value.length },
+    kind: 'liked' as const,
+  }))
+
+  // Lista para la barra lateral / vistas (forma normalizada). "Me gusta" siempre
+  // va fija arriba del todo.
+  const playlists = computed(() => [likedView.value, ...playlistsRaw.value.map(toViewPlaylist)])
+
+  // --- Me gusta --------------------------------------------------------------
+  const isLiked = (trackId: string) => likedRaw.value.some((t) => String(t?.id) === String(trackId))
+
+  const toggleLike = (track: Track) => {
+    if (!track?.id) return
+    if (isLiked(track.id)) {
+      likedRaw.value = likedRaw.value.filter((t) => String(t?.id) !== String(track.id))
+    } else {
+      // Las nuevas se añaden al principio (lo más reciente primero, como Spotify).
+      likedRaw.value = [track, ...likedRaw.value]
+    }
+    saveLiked()
+  }
 
   const generateId = () =>
     `local-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`
@@ -91,6 +139,7 @@ export const useLibraryStore = defineStore('library', () => {
     !!sourceId && playlistsRaw.value.some((p) => String(p.sourceId) === String(sourceId))
 
   const renamePlaylist = (id: string, name: string) => {
+    if (id === LIKED_ID) return // "Me gusta" no se renombra
     const playlist = playlistsRaw.value.find((p) => p.id === id)
     if (playlist) {
       playlist.name = (name || '').trim() || playlist.name
@@ -99,6 +148,7 @@ export const useLibraryStore = defineStore('library', () => {
   }
 
   const deletePlaylist = (id: string) => {
+    if (id === LIKED_ID) return // "Me gusta" no se elimina
     playlistsRaw.value = playlistsRaw.value.filter((p) => p.id !== id)
     save()
   }
@@ -125,18 +175,22 @@ export const useLibraryStore = defineStore('library', () => {
 
   // Forma "tipo Spotify" para PlaylistView (cabecera).
   const getPlaylist = (id: string) => {
+    if (id === LIKED_ID) return likedView.value
     const playlist = playlistsRaw.value.find((p) => p.id === id)
     return playlist ? toViewPlaylist(playlist) : null
   }
 
   // Forma {items:[{track}]} para PlaylistView/TrackList.
   const getPlaylistTracks = (id: string) => {
+    if (id === LIKED_ID) return { items: likedRaw.value.map((track) => ({ track })) }
     const playlist = playlistsRaw.value.find((p) => p.id === id)
     return { items: (playlist?.tracks ?? []).map((track) => ({ track })) }
   }
 
   return {
     playlists,
+    isLiked,
+    toggleLike,
     createPlaylist,
     importPlaylist,
     hasImported,

@@ -117,9 +117,7 @@ onMounted(async () => {
                 </span>
                 <div>
                   <p class="text-sm font-medium">Usar Invidious</p>
-                  <p class="text-xs text-muted-foreground">
-                    Alternativa de privacidad a YouTube.
-                  </p>
+                  <p class="text-xs text-muted-foreground">Alternativa de privacidad a YouTube.</p>
                 </div>
               </div>
               <Switch :model-value="useInvidious" @update:model-value="toggleAPI" />

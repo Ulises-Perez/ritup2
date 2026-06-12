@@ -35,7 +35,9 @@ const moveDown = (i: number) => playerStore.moveInQueue(i, i + 1)
     <SheetContent side="right" class="w-full gap-0 p-0 sm:max-w-md">
       <SheetHeader class="border-b px-5 py-4">
         <SheetTitle>En cola</SheetTitle>
-        <SheetDescription class="sr-only">Cola de reproducción y canciones similares</SheetDescription>
+        <SheetDescription class="sr-only"
+          >Cola de reproducción y canciones similares</SheetDescription
+        >
       </SheetHeader>
 
       <div class="flex-1 overflow-y-auto px-3 py-3">
@@ -95,8 +97,16 @@ const moveDown = (i: number) => playerStore.moveInQueue(i, i + 1)
                 </p>
                 <p class="truncate text-xs text-muted-foreground">{{ artistsOf(t) }}</p>
               </button>
-              <div class="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100">
-                <Button variant="ghost" size="icon-sm" :disabled="i === 0" title="Subir" @click="moveUp(i)">
+              <div
+                class="flex shrink-0 items-center opacity-0 transition-opacity group-hover:opacity-100"
+              >
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  :disabled="i === 0"
+                  title="Subir"
+                  @click="moveUp(i)"
+                >
                   <ChevronUp class="size-4" />
                 </Button>
                 <Button

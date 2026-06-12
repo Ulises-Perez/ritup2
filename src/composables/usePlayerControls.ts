@@ -61,7 +61,10 @@ export function usePlayerControls() {
     playerStore.resume()
     const trackYouTubeId = currentTrack.value.youtube_id
     try {
-      if (apiStore.currentStore.currentYouTubeId === trackYouTubeId && apiStore.currentStore.isReady) {
+      if (
+        apiStore.currentStore.currentYouTubeId === trackYouTubeId &&
+        apiStore.currentStore.isReady
+      ) {
         apiStore.play()
       } else {
         await apiStore.playTrack(currentTrack.value, {

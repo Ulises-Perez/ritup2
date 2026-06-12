@@ -45,6 +45,8 @@ export interface DeezerAlbumRaw {
   cover_xl?: string
   release_date?: string
   nb_tracks?: number
+  // 'album' | 'single' | 'ep' | 'compilation' (Deezer lo incluye en /artist/{id}/albums).
+  record_type?: string
   artist?: DeezerArtistRaw
   contributors?: DeezerArtistRaw[]
 }
@@ -142,6 +144,9 @@ export function normalizeAlbum(al: DeezerAlbumRaw) {
     artists: artistsFrom(al?.artist, al?.contributors),
     release_date: al?.release_date ?? '',
     total_tracks: al?.nb_tracks ?? 0,
+    // 'album' | 'single' | 'ep' | 'compilation'. Sirve para separar discografía
+    // (álbumes) de sencillos/EPs en ArtistView.
+    album_type: al?.record_type ?? 'album',
   }
 }
 

@@ -80,7 +80,7 @@ const exactImage = computed(
 const exactArtists = computed(() =>
   exactMatch.value?.type === 'artist'
     ? 'Artista'
-    : exactMatch.value?.artists?.map((a: any) => a?.name).join(', ') ?? '',
+    : (exactMatch.value?.artists?.map((a: any) => a?.name).join(', ') ?? ''),
 )
 
 const hasResults = computed(
@@ -118,10 +118,15 @@ const search = async (q: string) => {
 }
 
 const handleExactMatchClick = () => {
-  if (exactMatch.value?.type === 'track') playerStore.playFromContext(exactMatch.value, { type: 'search', tracks: tracks.value })
+  if (exactMatch.value?.type === 'track')
+    playerStore.playFromContext(exactMatch.value, { type: 'search', tracks: tracks.value })
 }
 
-watch(() => route.query.q, (q) => q && search(q as string), { immediate: true })
+watch(
+  () => route.query.q,
+  (q) => q && search(q as string),
+  { immediate: true },
+)
 onMounted(() => query.value && search(query.value))
 </script>
 
@@ -150,7 +155,11 @@ onMounted(() => query.value && search(query.value))
             @click="exactMatch.type === 'track' ? handleExactMatchClick() : undefined"
           >
             <div class="absolute inset-0 -z-0 opacity-20 transition-opacity group-hover:opacity-30">
-              <img :src="exactImage" class="size-full scale-150 object-cover blur-3xl" aria-hidden="true" />
+              <img
+                :src="exactImage"
+                class="size-full scale-150 object-cover blur-3xl"
+                aria-hidden="true"
+              />
             </div>
             <div class="relative z-10 flex h-full min-h-[220px] flex-col justify-between">
               <img
@@ -161,7 +170,9 @@ onMounted(() => query.value && search(query.value))
                 loading="lazy"
               />
               <div class="mt-6">
-                <h3 class="mb-2 line-clamp-2 text-3xl font-bold tracking-tight">{{ exactMatch.name }}</h3>
+                <h3 class="mb-2 line-clamp-2 text-3xl font-bold tracking-tight">
+                  {{ exactMatch.name }}
+                </h3>
                 <div class="flex items-center gap-3">
                   <Badge variant="secondary">{{ getExactMatchType }}</Badge>
                   <p class="truncate text-sm text-muted-foreground">{{ exactArtists }}</p>
@@ -207,7 +218,9 @@ onMounted(() => query.value && search(query.value))
                 {{ getArtistInitials(artist?.name || '') }}
               </div>
             </div>
-            <h3 class="w-full truncate text-sm font-semibold group-hover:text-primary">{{ artist?.name }}</h3>
+            <h3 class="w-full truncate text-sm font-semibold group-hover:text-primary">
+              {{ artist?.name }}
+            </h3>
             <p class="mt-1 text-xs text-muted-foreground">Artista</p>
           </RouterLink>
         </div>
@@ -232,7 +245,9 @@ onMounted(() => query.value && search(query.value))
                   loading="lazy"
                 />
               </div>
-              <h3 class="truncate text-sm font-semibold group-hover:text-primary">{{ album?.name }}</h3>
+              <h3 class="truncate text-sm font-semibold group-hover:text-primary">
+                {{ album?.name }}
+              </h3>
               <p class="truncate text-xs text-muted-foreground">
                 {{ album?.artists?.map((a: any) => a?.name).join(', ') }}
               </p>
@@ -257,7 +272,9 @@ onMounted(() => query.value && search(query.value))
                   loading="lazy"
                 />
               </div>
-              <h3 class="truncate text-sm font-semibold group-hover:text-primary">{{ pl?.name }}</h3>
+              <h3 class="truncate text-sm font-semibold group-hover:text-primary">
+                {{ pl?.name }}
+              </h3>
               <p class="truncate text-xs text-muted-foreground">De {{ pl?.owner?.display_name }}</p>
             </RouterLink>
           </div>

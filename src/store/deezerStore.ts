@@ -78,6 +78,22 @@ export const useDeezerStore = defineStore('deezer', () => {
     return { items: mapAlbums(albums) }
   }
 
+  // Artistas relacionados / de referencia (la red "fans también escuchan" de Deezer).
+  const getRelatedArtists = async (id: string, limit = 12) => {
+    const artists = await dz<DeezerList<DeezerArtistRaw>>(`/artist/${id}/related?limit=${limit}`)
+    return mapArtists(artists)
+  }
+
+  // "Aparece en": Deezer no expone un endpoint de "playlists en las que aparece el
+  // artista" sin auth, así que aproximamos buscando playlists por su nombre.
+  const getArtistPlaylists = async (name: string, limit = 10) => {
+    if (!name?.trim()) return []
+    const list = await dz<DeezerList<DeezerPlaylistRaw>>(
+      `/search/playlist?q=${q(name)}&limit=${limit}`,
+    )
+    return mapPlaylists(list)
+  }
+
   const getAlbum = async (id: string) => {
     const album = await dz<DeezerAlbumRaw>(`/album/${id}`)
     return normalizeAlbum(album)
@@ -180,6 +196,55 @@ export const useDeezerStore = defineStore('deezer', () => {
     return mapTracks(tracks)
   }
 
+  // Continuación "de género similar": cuando una cola (playlist/álbum) se agota,
+  // seguimos con el top del MISMO género de la canción semilla. El género se saca
+  // del álbum de la semilla (`/album/{id}.genre_id`) y las pistas del chart de ese
+  // género (`/chart/{genreId}/tracks`; genreId 0 = chart global como último recurso).
+  const getGenreContinuation = async (
+    seed: { album?: { id?: string } } | null,
+    excludeIds: string[] = [],
+    limit = 20,
+  ) => {
+    try {
+      let genreId = '0'
+      const albumId = seed?.album?.id
+      if (albumId) {
+        const album = await dz<DeezerAlbumRaw & { genre_id?: number | string }>(
+          `/album/${albumId}`,
+        ).catch(() => null)
+        const gid = album?.genre_id
+        // Deezer usa -1 para "sin género".
+        if (gid !== undefined && gid !== null && String(gid) !== '-1') genreId = String(gid)
+      }
+
+      const fetchChart = (id: string) =>
+        dz<DeezerList<DeezerTrackRaw>>(`/chart/${id}/tracks?limit=100`).catch(
+          () => ({ data: [] }) as DeezerList<DeezerTrackRaw>,
+        )
+
+      let list = await fetchChart(genreId)
+      if (!list.data?.length && genreId !== '0') list = await fetchChart('0')
+
+      const exclude = new Set(excludeIds.map(String))
+      const seen = new Set<string>()
+      const tracks = mapTracks(list).filter((t) => {
+        if (!t.id || exclude.has(t.id) || seen.has(t.id)) return false
+        seen.add(t.id)
+        return true
+      })
+
+      // Mezclar para que la radio no sea siempre el mismo orden del chart.
+      return tracks
+        .map((value) => ({ value, sort: Math.random() }))
+        .sort((a, b) => a.sort - b.sort)
+        .map(({ value }) => value)
+        .slice(0, limit)
+    } catch (error) {
+      console.error('Error en getGenreContinuation (Deezer):', error)
+      return []
+    }
+  }
+
   // Canciones similares: artistas relacionados + top del artista, mezclados y sin
   // duplicados. Reemplaza a spotifyStore.getSimilarSongs (que dependía del endpoint
   // /related-artists de Spotify, retirado para apps nuevas).
@@ -233,6 +298,8 @@ export const useDeezerStore = defineStore('deezer', () => {
     getArtist,
     getArtistTopTracks,
     getArtistAlbums,
+    getRelatedArtists,
+    getArtistPlaylists,
     getAlbum,
     getAlbumTracks,
     getPlaylist,
@@ -245,6 +312,7 @@ export const useDeezerStore = defineStore('deezer', () => {
     getGenreArtists,
     getGenreRadios,
     getRadioTracks,
+    getGenreContinuation,
     getSimilarSongs,
   }
 })

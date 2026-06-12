@@ -18,9 +18,7 @@ const artistAlbums = ref<any[]>([])
 const isLoading = ref(true)
 const error = ref('')
 
-const tracksWithAlbum = computed(() =>
-  albumTracks.value.map((t) => ({ ...t, album: album.value })),
-)
+const tracksWithAlbum = computed(() => albumTracks.value.map((t) => ({ ...t, album: album.value })))
 
 const playAll = () => {
   const list = tracksWithAlbum.value
@@ -95,7 +93,9 @@ onMounted(loadAlbumData)
         <div class="min-w-0 text-center sm:text-left">
           <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Álbum</p>
           <h1 class="mt-1 text-4xl font-bold tracking-tight sm:text-5xl">{{ album.name }}</h1>
-          <div class="mt-3 flex flex-wrap items-center justify-center gap-x-2 text-sm text-muted-foreground sm:justify-start">
+          <div
+            class="mt-3 flex flex-wrap items-center justify-center gap-x-2 text-sm text-muted-foreground sm:justify-start"
+          >
             <RouterLink
               v-for="artist in album.artists"
               :key="artist.id"
@@ -106,7 +106,9 @@ onMounted(loadAlbumData)
             </RouterLink>
             <span>•</span>
             <span>{{ album.total_tracks }} canciones</span>
-            <span v-if="album.release_date">• {{ new Date(album.release_date).getFullYear() }}</span>
+            <span v-if="album.release_date"
+              >• {{ new Date(album.release_date).getFullYear() }}</span
+            >
           </div>
           <div class="mt-5 flex justify-center sm:justify-start">
             <Button class="gap-2 rounded-full px-6" @click="playAll">
@@ -119,7 +121,11 @@ onMounted(loadAlbumData)
 
       <!-- Canciones -->
       <section v-if="albumTracks.length" class="rounded-xl border bg-card/40 p-2 sm:p-3">
-        <TrackList :tracks="tracksWithAlbum" :start-index="0" />
+        <TrackList
+          :tracks="tracksWithAlbum"
+          :start-index="0"
+          :context="{ type: 'album', name: album.name, id: String(route.params.id) }"
+        />
       </section>
 
       <!-- Más del artista -->
@@ -145,7 +151,9 @@ onMounted(loadAlbumData)
                 <Play class="size-5 translate-x-px" />
               </span>
             </div>
-            <h3 class="truncate text-sm font-semibold group-hover:text-primary">{{ other.name }}</h3>
+            <h3 class="truncate text-sm font-semibold group-hover:text-primary">
+              {{ other.name }}
+            </h3>
             <p class="truncate text-xs text-muted-foreground">
               {{ new Date(other.release_date).getFullYear() }} • {{ other.total_tracks }} canciones
             </p>
